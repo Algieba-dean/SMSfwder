@@ -9,17 +9,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onNavigateToEmailConfig: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshEmailConfig()
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         Text(
-            text = "Settings",
+            text = "设置",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -28,7 +38,7 @@ fun SettingsScreen() {
         
         // Email Configuration Section
         SettingsSection(
-            title = "Email Configuration",
+            title = "邮箱配置",
             icon = Icons.Default.Email
         ) {
             Card(
@@ -37,26 +47,58 @@ fun SettingsScreen() {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
+                    // Configuration Status Indicator
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.isEmailConfigured) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = if (uiState.isEmailConfigured) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (uiState.isEmailConfigured) "邮箱已配置" else "邮箱未配置",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (uiState.isEmailConfigured) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.error
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
                     Text(
-                        text = "SMTP Server: Not configured",
+                        text = "SMTP 服务器: ${uiState.smtpHost}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "Sender Email: Not configured",
+                        text = "发送邮箱: ${uiState.senderEmail}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "Receiver Email: Not configured",
+                        text = "接收邮箱: ${uiState.receiverEmail}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     
                     Button(
-                        onClick = { /* TODO: Navigate to email config */ },
+                        onClick = onNavigateToEmailConfig,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Configure Email")
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (uiState.isEmailConfigured) "管理邮箱配置" else "配置邮箱")
                     }
                 }
             }
@@ -66,7 +108,7 @@ fun SettingsScreen() {
         
         // Forward Rules Section
         SettingsSection(
-            title = "Forward Rules",
+            title = "转发规则",
             icon = Icons.Default.Rule
         ) {
             Card(
@@ -80,7 +122,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Verification Codes")
+                        Text("验证码")
                         Switch(checked = true, onCheckedChange = {})
                     }
                     Row(
@@ -88,7 +130,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Banking Notifications")
+                        Text("银行通知")
                         Switch(checked = true, onCheckedChange = {})
                     }
                     Row(
@@ -96,7 +138,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Block Spam")
+                        Text("拦截垃圾短信")
                         Switch(checked = false, onCheckedChange = {})
                     }
                     
@@ -106,7 +148,7 @@ fun SettingsScreen() {
                         onClick = { /* TODO: Navigate to rules config */ },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Manage Rules")
+                        Text("管理规则")
                     }
                 }
             }
@@ -116,7 +158,7 @@ fun SettingsScreen() {
         
         // Notifications Section
         SettingsSection(
-            title = "Notifications",
+            title = "通知设置",
             icon = Icons.Default.Notifications
         ) {
             Card(
@@ -130,7 +172,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Forward Success")
+                        Text("转发成功")
                         Switch(checked = true, onCheckedChange = {})
                     }
                     Row(
@@ -138,7 +180,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Forward Failure")
+                        Text("转发失败")
                         Switch(checked = true, onCheckedChange = {})
                     }
                     Row(
@@ -146,7 +188,7 @@ fun SettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Sound Alerts")
+                        Text("声音提醒")
                         Switch(checked = false, onCheckedChange = {})
                     }
                 }

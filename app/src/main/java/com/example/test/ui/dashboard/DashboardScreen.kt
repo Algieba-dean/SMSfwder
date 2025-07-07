@@ -48,7 +48,7 @@ fun DashboardScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "SMS Email Forwarder",
+                text = "短信邮件转发器",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -70,13 +70,13 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
-                title = "Today",
+                title = "今日",
                 value = uiState.todayCount.toString(),
                 icon = Icons.Default.Today,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Success Rate",
+                title = "成功率",
                 value = "${uiState.successRate}%",
                 icon = Icons.Default.CheckCircle,
                 modifier = Modifier.weight(1f)
@@ -87,7 +87,7 @@ fun DashboardScreen(
 
         // Recent Messages Section
         Text(
-            text = "Recent Messages",
+            text = "最近消息",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
@@ -122,12 +122,12 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No messages yet",
+                            text = "暂无消息",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "SMS messages will appear here once received",
+                            text = "收到短信后将在此处显示",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -181,7 +181,7 @@ private fun ServiceStatusCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (isServiceActive) "Service Active" else "Service Inactive",
+                        text = if (isServiceActive) "服务运行中" else "服务已停止",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         color = if (isServiceActive) 
@@ -190,7 +190,7 @@ private fun ServiceStatusCard(
                             MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = if (isServiceActive) "SMS forwarding is running" else "SMS forwarding is stopped",
+                        text = if (isServiceActive) "短信转发功能正在运行" else "短信转发功能已停止",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isServiceActive) 
                             MaterialTheme.colorScheme.onPrimaryContainer 

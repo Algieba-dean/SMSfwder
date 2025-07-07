@@ -19,7 +19,7 @@ fun StatisticsScreen() {
             .padding(16.dp)
     ) {
         Text(
-            text = "Statistics",
+            text = "统计",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -43,7 +43,7 @@ fun StatisticsScreen() {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "This Week",
+                        text = "本周",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -68,7 +68,7 @@ fun StatisticsScreen() {
                             tint = MaterialTheme.colorScheme.outline
                         )
                         Text(
-                            text = "Chart will be shown here",
+                            text = "图表将在此处显示",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -85,13 +85,13 @@ fun StatisticsScreen() {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
-                title = "Total Forwarded",
+                title = "总转发数",
                 value = "156",
                 icon = Icons.Default.Email,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Success Rate",
+                title = "成功率",
                 value = "98.7%",
                 icon = Icons.Default.CheckCircle,
                 modifier = Modifier.weight(1f)
@@ -105,14 +105,14 @@ fun StatisticsScreen() {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
-                title = "Avg Delay",
+                title = "平均延迟",
                 value = "1.2s",
                 icon = Icons.Default.Schedule,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Last Failure",
-                value = "None",
+                title = "最近失败",
+                value = "无",
                 icon = Icons.Default.Error,
                 modifier = Modifier.weight(1f)
             )
@@ -137,7 +137,7 @@ fun StatisticsScreen() {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Detailed Statistics",
+                        text = "详细统计",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -145,12 +145,12 @@ fun StatisticsScreen() {
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                StatRow("Messages Received", "234")
-                StatRow("Successfully Forwarded", "156")
-                StatRow("Failed to Forward", "3")
-                StatRow("Ignored (Spam)", "75")
-                StatRow("Average Processing Time", "1.2 seconds")
-                StatRow("Peak Usage Hour", "9:00 AM")
+                StatRow("接收消息数", "234")
+                StatRow("转发成功数", "156")
+                StatRow("转发失败数", "3")
+                StatRow("忽略数(垃圾)", "75")
+                StatRow("平均处理时间", "1.2 秒")
+                StatRow("高峰使用时段", "上午 9:00")
             }
         }
     }

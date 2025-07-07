@@ -35,12 +35,12 @@ fun LogsScreen() {
     // Sample log data
     val sampleLogs = remember {
         listOf(
-            LogEntry(1, System.currentTimeMillis() - 120000, LogLevel.SUCCESS, "SMS forwarded successfully", "From: +86138****1234"),
-            LogEntry(2, System.currentTimeMillis() - 300000, LogLevel.INFO, "SMS received", "Banking notification detected"),
-            LogEntry(3, System.currentTimeMillis() - 450000, LogLevel.WARNING, "Email connection slow", "Retry attempt 1/3"),
-            LogEntry(4, System.currentTimeMillis() - 600000, LogLevel.SUCCESS, "SMS forwarded successfully", "From: +86139****5678"),
-            LogEntry(5, System.currentTimeMillis() - 900000, LogLevel.ERROR, "Failed to forward SMS", "SMTP authentication failed"),
-            LogEntry(6, System.currentTimeMillis() - 1200000, LogLevel.INFO, "Service started", "SMS forwarding service initialized"),
+            LogEntry(1, System.currentTimeMillis() - 120000, LogLevel.SUCCESS, "短信转发成功", "来自: +86138****1234"),
+            LogEntry(2, System.currentTimeMillis() - 300000, LogLevel.INFO, "接收短信", "检测到银行通知"),
+            LogEntry(3, System.currentTimeMillis() - 450000, LogLevel.WARNING, "邮件连接较慢", "重试第 1/3 次"),
+            LogEntry(4, System.currentTimeMillis() - 600000, LogLevel.SUCCESS, "短信转发成功", "来自: +86139****5678"),
+            LogEntry(5, System.currentTimeMillis() - 900000, LogLevel.ERROR, "短信转发失败", "SMTP 认证失败"),
+            LogEntry(6, System.currentTimeMillis() - 1200000, LogLevel.INFO, "服务已启动", "短信转发服务已初始化"),
         )
     }
 
@@ -56,7 +56,7 @@ fun LogsScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Logs",
+                text = "日志",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -65,13 +65,13 @@ fun LogsScreen() {
                 IconButton(onClick = { /* TODO: Filter logs */ }) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
-                        contentDescription = "Filter"
+                        contentDescription = "过滤"
                     )
                 }
                 IconButton(onClick = { /* TODO: Clear logs */ }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Clear"
+                        contentDescription = "清除"
                     )
                 }
             }
@@ -86,28 +86,28 @@ fun LogsScreen() {
             item {
                 FilterChip(
                     onClick = { /* TODO: Filter all */ },
-                    label = { Text("All") },
+                    label = { Text("全部") },
                     selected = true
                 )
             }
             item {
                 FilterChip(
                     onClick = { /* TODO: Filter success */ },
-                    label = { Text("Success") },
+                    label = { Text("成功") },
                     selected = false
                 )
             }
             item {
                 FilterChip(
                     onClick = { /* TODO: Filter errors */ },
-                    label = { Text("Errors") },
+                    label = { Text("错误") },
                     selected = false
                 )
             }
             item {
                 FilterChip(
                     onClick = { /* TODO: Filter warnings */ },
-                    label = { Text("Warnings") },
+                    label = { Text("警告") },
                     selected = false
                 )
             }
@@ -137,12 +137,12 @@ fun LogsScreen() {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No logs yet",
+                            text = "暂无日志",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Activity logs will appear here",
+                            text = "活动日志将在此处显示",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )

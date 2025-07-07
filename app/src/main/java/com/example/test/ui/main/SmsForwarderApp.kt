@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.test.ui.dashboard.DashboardScreen
 import com.example.test.ui.settings.SettingsScreen
+import com.example.test.ui.settings.EmailConfigScreen
 import com.example.test.ui.statistics.StatisticsScreen
 import com.example.test.ui.logs.LogsScreen
 
@@ -69,8 +70,32 @@ fun SmsForwarderApp() {
             composable(Screen.Dashboard.route) {
                 DashboardScreen()
             }
-            composable(Screen.Settings.route) {
-                SettingsScreen()
+            composable(Screen.Settings.route) { backStackEntry ->
+                // Listen for result from email config screen
+                val savedStateHandle = backStackEntry.savedStateHandle
+                val emailConfigUpdated = savedStateHandle.get<Boolean>("email_config_updated") ?: false
+                
+                SettingsScreen(
+                    onNavigateToEmailConfig = {
+                        navController.navigate(Screen.EmailConfig.route)
+                    }
+                )
+                
+                // Clear the flag after handling
+                if (emailConfigUpdated) {
+                    savedStateHandle.remove<Boolean>("email_config_updated")
+                }
+            }
+            composable(Screen.EmailConfig.route) {
+                EmailConfigScreen(
+                    onNavigateBack = { configurationSaved ->
+                        if (configurationSaved) {
+                            // Set flag to indicate configuration was updated
+                            navController.previousBackStackEntry?.savedStateHandle?.set("email_config_updated", true)
+                        }
+                        navController.popBackStack()
+                    }
+                )
             }
             composable(Screen.Statistics.route) {
                 StatisticsScreen()
@@ -83,10 +108,11 @@ fun SmsForwarderApp() {
 }
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Dashboard : Screen("dashboard", "Dashboard", Icons.Filled.Home)
-    object Settings : Screen("settings", "Settings", Icons.Filled.Settings)
-    object Statistics : Screen("statistics", "Statistics", Icons.Filled.Analytics)
-    object Logs : Screen("logs", "Logs", Icons.Filled.List)
+    object Dashboard : Screen("dashboard", "主页", Icons.Filled.Home)
+    object Settings : Screen("settings", "设置", Icons.Filled.Settings)
+    object EmailConfig : Screen("email_config", "邮箱配置", Icons.Filled.Email)
+    object Statistics : Screen("statistics", "统计", Icons.Filled.Analytics)
+    object Logs : Screen("logs", "日志", Icons.Filled.List)
 }
 
 private val bottomNavItems = listOf(
