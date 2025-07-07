@@ -119,3 +119,10 @@ dependencies {
     androidTestImplementation "com.google.dagger:hilt-android-testing:2.48"
     kaptAndroidTest "com.google.dagger:hilt-compiler:2.48"
 }
+
+// Task for GitHub Actions to get version name
+tasks.register('printVersionName') {
+    doLast {
+        println android.defaultConfig.versionName
+    }
+}

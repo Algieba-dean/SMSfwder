@@ -1,0 +1,143 @@
+name: Build and Release Android App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 触发条件：推送版本标签，如 v1.0.0
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Clean project
+      run: ./gradlew clean
+      
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+      
+    - name: Build Release APK (unsigned)
+      run: ./gradlew assembleRelease
+      
+    - name: Get version name
+      id: version
+      run: |
+        VERSION_NAME=$(./gradlew -q printVersionName | tail -n 1)
+        echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION_NAME"
+        
+    - name: Rename APK files
+      run: |
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/SMSforwarder-${{ steps.version.outputs.version_name }}-debug.apk
+        mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/SMSforwarder-${{ steps.version.outputs.version_name }}-release-unsigned.apk
+        
+    - name: Generate checksums
+      run: |
+        cd app/build/outputs/apk
+        sha256sum debug/SMSforwarder-${{ steps.version.outputs.version_name }}-debug.apk > debug/checksums.txt
+        sha256sum release/SMSforwarder-${{ steps.version.outputs.version_name }}-release-unsigned.apk > release/checksums.txt
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: SMSforwarder ${{ github.ref_name }}
+        body: |
+          ## SMSforwarder ${{ github.ref_name }}
+          
+          ### 📱 Android应用更新
+          
+          **版本**: ${{ steps.version.outputs.version_name }}
+          **构建时间**: ${{ github.event.head_commit.timestamp }}
+          
+          ### 📦 下载
+          
+          - **Debug版本**: 用于测试和调试
+          - **Release版本**: 生产环境使用(未签名)
+          
+          ### ✨ 功能特性
+          
+          - 🚀 自动SMS转发到邮箱
+          - ⚙️ 智能转发规则配置
+          - 📊 详细统计信息
+          - 📝 完整日志记录
+          - 🎨 现代化Material Design界面
+          
+          ### 🔒 安全说明
+          
+          Release版本为未签名APK，建议自行签名后使用。
+          
+          ### 📋 安装要求
+          
+          - Android 14+ (API 35+)
+          - SMS权限
+          - 网络权限
+          
+        draft: false
+        prerelease: false
+        
+    - name: Upload Debug APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/debug/SMSforwarder-${{ steps.version.outputs.version_name }}-debug.apk
+        asset_name: SMSforwarder-${{ steps.version.outputs.version_name }}-debug.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Release APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/release/SMSforwarder-${{ steps.version.outputs.version_name }}-release-unsigned.apk
+        asset_name: SMSforwarder-${{ steps.version.outputs.version_name }}-release-unsigned.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Debug Checksums
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/debug/checksums.txt
+        asset_name: SMSforwarder-${{ steps.version.outputs.version_name }}-debug-checksums.txt
+        asset_content_type: text/plain
+        
+    - name: Upload Release Checksums
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/release/checksums.txt
+        asset_name: SMSforwarder-${{ steps.version.outputs.version_name }}-release-checksums.txt
+        asset_content_type: text/plain 

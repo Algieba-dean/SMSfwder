@@ -169,6 +169,8 @@ app/build/outputs/mapping/release/
 *.jks
 *.keystore
 key.properties
+keystore.properties
+smsforwarder-key.jks
 
 # Local configuration files
 google-services.json
