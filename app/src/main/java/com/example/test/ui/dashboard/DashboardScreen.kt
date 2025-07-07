@@ -33,6 +33,14 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         viewModel.loadData()
     }
+    
+    // Auto refresh every 10 seconds to check for new messages
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(10000) // 10 seconds
+            viewModel.refreshData()
+        }
+    }
 
     Column(
         modifier = Modifier

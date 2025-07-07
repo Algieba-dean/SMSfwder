@@ -16,52 +16,62 @@ class SmsReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "SmsReceiver"
         const val SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED"
+        const val SMS_DELIVER_ACTION = "android.provider.Telephony.SMS_DELIVER"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "SMS broadcast received, action: ${intent.action}")
+        Log.d(TAG, "============ SMS BROADCAST RECEIVED ============")
+        Log.d(TAG, "Action: ${intent.action}")
+        Log.d(TAG, "Intent extras: ${intent.extras?.keySet()?.joinToString()}")
+        Log.d(TAG, "Package: ${context.packageName}")
         
         // 检查权限
         if (!PermissionHelper.hasSmsPermissions(context)) {
-            Log.w(TAG, "SMS permissions not granted, ignoring SMS")
+            Log.w(TAG, "❌ SMS permissions not granted, ignoring SMS")
             return
         }
+        Log.d(TAG, "✅ SMS permissions verified")
 
         // 检查action
         val action = intent.action
-        if (action != SMS_RECEIVED_ACTION && action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            Log.d(TAG, "Not an SMS received action: $action")
+        if (action != SMS_RECEIVED_ACTION && 
+            action != SMS_DELIVER_ACTION &&
+            action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            Log.d(TAG, "❌ Not an SMS action: $action")
             return
         }
+        Log.d(TAG, "✅ Valid SMS action: $action")
 
         try {
-            // 获取SMS消息
+            // 优先处理测试SMS
+            val testSender = intent.getStringExtra("sender")
+            val testMessage = intent.getStringExtra("message")
+            val testTimestamp = intent.getLongExtra("timestamp", System.currentTimeMillis())
+            
+            if (!testSender.isNullOrEmpty() && !testMessage.isNullOrEmpty()) {
+                Log.d(TAG, "🧪 Processing test SMS from: $testSender")
+                enqueueSmsProcessing(context, testSender, testMessage, testTimestamp)
+                return
+            }
+            
+            // 处理真实SMS
             val messages = extractSmsMessages(intent)
             if (messages.isEmpty()) {
-                // 检查是否是测试SMS
-                val sender = intent.getStringExtra("sender")
-                val message = intent.getStringExtra("message")
-                val timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis())
-                
-                if (!sender.isNullOrEmpty() && !message.isNullOrEmpty()) {
-                    Log.d(TAG, "Processing test SMS directly")
-                    enqueueSmsProcessing(context, sender, message, timestamp)
-                    return
-                }
-                
-                Log.w(TAG, "No SMS messages found in intent")
+                Log.w(TAG, "❌ No SMS messages found in intent")
                 return
             }
 
-            Log.d(TAG, "Found ${messages.size} SMS message(s)")
+            Log.d(TAG, "✅ Found ${messages.size} SMS message(s)")
             
             // 处理每条SMS消息
             for (smsMessage in messages) {
                 processSmsMessage(context, smsMessage)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error processing SMS: ${e.message}", e)
+            Log.e(TAG, "💥 Error processing SMS: ${e.message}", e)
         }
+        
+        Log.d(TAG, "============ SMS PROCESSING COMPLETED ============")
     }
 
     private fun extractSmsMessages(intent: Intent): List<SmsMessage> {
@@ -110,22 +120,6 @@ class SmsReceiver : BroadcastReceiver() {
             Log.w(TAG, "Failed to extract messages using manual PDU parsing: ${e.message}")
         }
 
-        // 方法3：测试模式下的简化处理
-        if (messages.isEmpty()) {
-            try {
-                val sender = intent.getStringExtra("sender")
-                val message = intent.getStringExtra("message")
-                
-                if (!sender.isNullOrEmpty() && !message.isNullOrEmpty()) {
-                    Log.d(TAG, "Found test/debug SMS data: sender=$sender")
-                    // 返回空列表，让调用者在onReceive中处理测试SMS
-                    return listOf()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to check for test SMS: ${e.message}")
-            }
-        }
-
         return messages
     }
 
@@ -141,6 +135,11 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun enqueueSmsProcessing(context: Context, sender: String, content: String, timestamp: Long) {
+        Log.d(TAG, "📤 Enqueueing SMS processing:")
+        Log.d(TAG, "   📞 Sender: $sender")
+        Log.d(TAG, "   📝 Content length: ${content.length}")
+        Log.d(TAG, "   🕐 Timestamp: $timestamp")
+        
         // 使用WorkManager异步处理SMS转发
         val workRequest = OneTimeWorkRequestBuilder<SmsForwardWorker>()
             .setInputData(
@@ -154,6 +153,7 @@ class SmsReceiver : BroadcastReceiver() {
             .build()
 
         WorkManager.getInstance(context).enqueue(workRequest)
-        Log.d(TAG, "SMS processing work enqueued for message from: $sender")
+        Log.d(TAG, "✅ SMS processing work enqueued successfully for: $sender")
+        Log.d(TAG, "🆔 Work ID: ${workRequest.id}")
     }
 } 

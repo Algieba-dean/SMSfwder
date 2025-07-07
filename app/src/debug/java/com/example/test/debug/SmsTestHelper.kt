@@ -29,47 +29,13 @@ object SmsTestHelper {
     )
     
     /**
-     * 模拟发送单条测试短信 - 正确模拟系统SMS广播
+     * 模拟发送单条测试短信 - 简化版本
      */
     fun simulateIncomingSms(context: Context, sender: String, message: String) {
         try {
             Log.d(TAG, "Simulating SMS from: $sender, message: $message")
             
-            // 创建模拟的SMS PDU数据
-            val pduBundle = Bundle().apply {
-                putString("format", "3gpp")
-                
-                // 创建简化的PDU数据
-                // 注意：这是一个简化的实现，真实的PDU格式更复杂
-                val pduData = createSimplePdu(sender, message)
-                putSerializable("pdus", arrayOf(pduData))
-            }
-            
-            // 创建SMS_RECEIVED广播
-            val intent = Intent(Telephony.Sms.Intents.SMS_RECEIVED_ACTION).apply {
-                putExtras(pduBundle)
-            }
-            
-            // 直接调用我们的SMS接收器
-            val receiver = SmsReceiver()
-            receiver.onReceive(context, intent)
-            
-            Log.d(TAG, "SMS simulation completed")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error simulating SMS: ${e.message}", e)
-            // 如果模拟失败，尝试简化的方法
-            simulateIncomingSmsSimple(context, sender, message)
-        }
-    }
-    
-    /**
-     * 简化的SMS模拟方法（备用）
-     */
-    private fun simulateIncomingSmsSimple(context: Context, sender: String, message: String) {
-        try {
-            Log.d(TAG, "Using simplified SMS simulation")
-            
+            // 创建简化的测试Intent
             val intent = Intent("android.provider.Telephony.SMS_RECEIVED").apply {
                 putExtra("sender", sender)
                 putExtra("message", message)
@@ -80,59 +46,11 @@ object SmsTestHelper {
             val receiver = SmsReceiver()
             receiver.onReceive(context, intent)
             
+            Log.d(TAG, "SMS simulation completed successfully")
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Error in simplified SMS simulation: ${e.message}", e)
+            Log.e(TAG, "Error simulating SMS: ${e.message}", e)
         }
-    }
-    
-    /**
-     * 创建简化的PDU数据
-     */
-    private fun createSimplePdu(sender: String, message: String): ByteArray {
-        // 这是一个非常简化的PDU创建方法
-        // 在真实场景中，PDU格式会更复杂
-        val timestamp = System.currentTimeMillis()
-        val pdu = StringBuilder()
-        
-        // SMS-DELIVER PDU 的基本结构
-        pdu.append("00") // SMS-DELIVER
-        pdu.append("0C") // 发送方号码长度
-        pdu.append("91") // 国际号码格式
-        
-        // 简化的号码编码
-        val encodedSender = sender.replace("+86", "").reversed()
-        pdu.append(encodedSender.padEnd(12, 'F'))
-        
-        pdu.append("00") // PID
-        pdu.append("00") // DCS
-        
-        // 时间戳（简化）
-        pdu.append("00000000000000")
-        
-        // 消息长度
-        val messageBytes = message.toByteArray(Charsets.UTF_8)
-        pdu.append(String.format("%02X", messageBytes.size))
-        
-        // 消息内容
-        messageBytes.forEach { byte ->
-            pdu.append(String.format("%02X", byte.toInt() and 0xFF))
-        }
-        
-        return hexStringToByteArray(pdu.toString())
-    }
-    
-    /**
-     * 十六进制字符串转字节数组
-     */
-    private fun hexStringToByteArray(hex: String): ByteArray {
-        val len = hex.length
-        val data = ByteArray(len / 2)
-        var i = 0
-        while (i < len) {
-            data[i / 2] = ((Character.digit(hex[i], 16) shl 4) + Character.digit(hex[i + 1], 16)).toByte()
-            i += 2
-        }
-        return data
     }
     
     /**

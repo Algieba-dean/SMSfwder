@@ -38,36 +38,37 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
-                // Collect recent messages
-                smsRepository.getRecentMessages(10).collect { messages ->
-                    _uiState.value = _uiState.value.copy(
+                // Combine recent messages with statistics
+                combine(
+                    smsRepository.getRecentMessages(10),
+                    flow { emit(smsRepository.getTodayMessageCount()) },
+                    flow { emit(smsRepository.getTodayMessageCountByStatus(ForwardStatus.SUCCESS)) }
+                ) { messages, todayCount, successCount ->
+                    val successRate = if (todayCount > 0) {
+                        ((successCount.toDouble() / todayCount.toDouble()) * 100).toInt()
+                    } else 0
+
+                    DashboardUiState(
+                        isLoading = false,
+                        isServiceActive = _uiState.value.isServiceActive,
                         recentMessages = messages,
-                        isLoading = false
+                        todayCount = todayCount,
+                        successRate = successRate,
+                        errorMessage = null
                     )
+                }.catch { e ->
+                    emit(
+                        _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = e.message
+                        )
+                    )
+                }.collect { newState ->
+                    _uiState.value = newState
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = e.message,
-                    isLoading = false
-                )
-            }
-        }
-
-        // Load today's statistics
-        viewModelScope.launch {
-            try {
-                val todayCount = smsRepository.getTodayMessageCount()
-                val successCount = smsRepository.getTodayMessageCountByStatus(ForwardStatus.SUCCESS)
-                val successRate = if (todayCount > 0) {
-                    ((successCount.toDouble() / todayCount.toDouble()) * 100).toInt()
-                } else 0
-
-                _uiState.value = _uiState.value.copy(
-                    todayCount = todayCount,
-                    successRate = successRate
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
                     errorMessage = e.message
                 )
             }

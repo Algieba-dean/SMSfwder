@@ -34,16 +34,23 @@ class SmsForwardWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): ListenableWorker.Result = withContext(Dispatchers.IO) {
+        Log.d(TAG, "============ SMS FORWARD WORKER STARTED ============")
+        Log.d(TAG, "🆔 Worker ID: $id")
+        
         try {
             val receivedMessageId = inputData.getLong("messageId", -1L)
             val sender = inputData.getString("sender") ?: ""
             val content = inputData.getString("content") ?: ""
             val timestamp = inputData.getLong("timestamp", System.currentTimeMillis())
 
-            Log.d(TAG, "Processing SMS from: $sender")
+            Log.d(TAG, "📥 Processing SMS:")
+            Log.d(TAG, "   📞 Sender: $sender")
+            Log.d(TAG, "   📝 Content: ${content.take(50)}${if (content.length > 50) "..." else ""}")
+            Log.d(TAG, "   🕐 Timestamp: $timestamp")
+            Log.d(TAG, "   🆔 Message ID: $receivedMessageId")
 
             if (receivedMessageId == -1L) {
-                Log.e(TAG, "Invalid message ID")
+                Log.e(TAG, "❌ Invalid message ID")
                 return@withContext ListenableWorker.Result.failure()
             }
 
