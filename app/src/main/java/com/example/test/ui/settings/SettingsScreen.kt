@@ -369,15 +369,16 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
+                            OutlinedButton(
                                 onClick = {
                                     try {
                                         val helperClass = Class.forName("com.example.test.debug.SmsTestHelper")
+                                        val instanceField = helperClass.getDeclaredField("INSTANCE")
+                                        val instance = instanceField.get(null)
                                         val method = helperClass.getMethod("sendTestSms", android.content.Context::class.java, Int::class.java)
-                                        val instance = helperClass.kotlin.objectInstance
-                                        method.invoke(instance, context, 0) // 发送银行通知
+                                        method.invoke(instance, context, 0) // 发送银行通知测试短信
+                                        android.widget.Toast.makeText(context, "已发送银行通知测试短信", android.widget.Toast.LENGTH_SHORT).show()
                                     } catch (e: Exception) {
-                                        // Fallback: 手动创建Intent模拟SMS
                                         android.widget.Toast.makeText(context, "请使用模拟器Extended Controls发送测试短信", android.widget.Toast.LENGTH_LONG).show()
                                     }
                                 },
@@ -386,13 +387,15 @@ fun SettingsScreen(
                                 Text("银行通知", fontSize = 12.sp)
                             }
                             
-                            Button(
+                            OutlinedButton(
                                 onClick = {
                                     try {
                                         val helperClass = Class.forName("com.example.test.debug.SmsTestHelper")
+                                        val instanceField = helperClass.getDeclaredField("INSTANCE")
+                                        val instance = instanceField.get(null)
                                         val method = helperClass.getMethod("sendTestSms", android.content.Context::class.java, Int::class.java)
-                                        val instance = helperClass.kotlin.objectInstance
-                                        method.invoke(instance, context, 1) // 发送验证码
+                                        method.invoke(instance, context, 1) // 发送验证码测试短信
+                                        android.widget.Toast.makeText(context, "已发送验证码测试短信", android.widget.Toast.LENGTH_SHORT).show()
                                     } catch (e: Exception) {
                                         android.widget.Toast.makeText(context, "请使用模拟器Extended Controls发送测试短信", android.widget.Toast.LENGTH_LONG).show()
                                     }
@@ -409,8 +412,9 @@ fun SettingsScreen(
                             onClick = {
                                 try {
                                     val helperClass = Class.forName("com.example.test.debug.SmsTestHelper")
+                                    val instanceField = helperClass.getDeclaredField("INSTANCE")
+                                    val instance = instanceField.get(null)
                                     val method = helperClass.getMethod("sendAllTestSms", android.content.Context::class.java, Long::class.java)
-                                    val instance = helperClass.kotlin.objectInstance
                                     method.invoke(instance, context, 3000L) // 每3秒发送一条
                                     android.widget.Toast.makeText(context, "开始发送测试短信序列...", android.widget.Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
