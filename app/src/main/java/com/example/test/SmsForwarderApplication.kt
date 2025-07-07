@@ -6,8 +6,12 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import androidx.work.WorkManager
+import com.example.test.domain.repository.ForwardRepository
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -15,6 +19,11 @@ class SmsForwarderApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+    
+    @Inject
+    lateinit var forwardRepository: ForwardRepository
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         const val CHANNEL_ID = "sms_forwarder_channel"
@@ -25,6 +34,18 @@ class SmsForwarderApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        initializeDefaultRules()
+    }
+    
+    private fun initializeDefaultRules() {
+        applicationScope.launch {
+            try {
+                forwardRepository.initializeDefaultRules()
+                android.util.Log.d("SmsForwarderApp", "✅ Default rules initialized")
+            } catch (e: Exception) {
+                android.util.Log.e("SmsForwarderApp", "❌ Failed to initialize default rules: ${e.message}", e)
+            }
+        }
     }
 
     override val workManagerConfiguration: Configuration

@@ -63,10 +63,19 @@ class ForwardRepositoryImpl @Inject constructor(
     }
 
     override suspend fun initializeDefaultRules() {
-        val existingRules = forwardRuleDao.getAllRules()
-        // Only add default rules if no rules exist
-        // This would be called on first app launch
-        insertRules(DefaultRules.defaultRules)
+        try {
+            val existingRules = forwardRuleDao.getAllRulesSync()
+            // Only add default rules if no rules exist
+            if (existingRules.isEmpty()) {
+                android.util.Log.d("ForwardRepository", "📝 No existing rules found, initializing default rules...")
+                insertRules(DefaultRules.defaultRules)
+                android.util.Log.d("ForwardRepository", "✅ ${DefaultRules.defaultRules.size} default rules inserted")
+            } else {
+                android.util.Log.d("ForwardRepository", "📋 Found ${existingRules.size} existing rules, skipping initialization")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ForwardRepository", "❌ Error initializing default rules: ${e.message}", e)
+        }
     }
 
     // Forward Records

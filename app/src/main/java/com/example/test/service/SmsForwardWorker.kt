@@ -70,7 +70,28 @@ class SmsForwardWorker @AssistedInject constructor(
             // Check if message should be forwarded
             val forwardRecord = forwardRepository.processMessage(savedMessage)
             if (forwardRecord == null) {
-                Log.d(TAG, "Message not eligible for forwarding")
+                Log.d(TAG, "❌ Message not eligible for forwarding")
+                
+                // 添加详细的规则检查日志
+                val enabledRules = forwardRepository.getEnabledRules()
+                Log.d(TAG, "📋 Found ${enabledRules.size} enabled rules")
+                
+                if (enabledRules.isEmpty()) {
+                    Log.w(TAG, "⚠️ No enabled rules found! This might be why forwarding failed.")
+                } else {
+                    Log.d(TAG, "🔍 Checking rules against message:")
+                    Log.d(TAG, "   📞 Sender: ${savedMessage.sender}")
+                    Log.d(TAG, "   📝 Content: ${savedMessage.content}")
+                    
+                    enabledRules.forEachIndexed { index, rule ->
+                        Log.d(TAG, "   🔸 Rule ${index + 1}: ${rule.name}")
+                        Log.d(TAG, "     - Type: ${rule.ruleType}")
+                        Log.d(TAG, "     - Match: ${rule.matchType}")
+                        Log.d(TAG, "     - Keywords: ${rule.keywords}")
+                        Log.d(TAG, "     - Enabled: ${rule.isEnabled}")
+                    }
+                }
+                
                 smsRepository.updateForwardStatus(messageId, ForwardStatus.IGNORED, null)
                 return@withContext ListenableWorker.Result.success()
             }

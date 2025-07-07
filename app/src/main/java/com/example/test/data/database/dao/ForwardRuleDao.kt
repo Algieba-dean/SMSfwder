@@ -10,6 +10,9 @@ interface ForwardRuleDao {
     @Query("SELECT * FROM forward_rules ORDER BY priority DESC, createdAt DESC")
     fun getAllRules(): Flow<List<ForwardRuleEntity>>
 
+    @Query("SELECT * FROM forward_rules ORDER BY priority DESC, createdAt DESC")
+    suspend fun getAllRulesSync(): List<ForwardRuleEntity>
+
     @Query("SELECT * FROM forward_rules WHERE isEnabled = 1 ORDER BY priority DESC")
     suspend fun getEnabledRules(): List<ForwardRuleEntity>
 
