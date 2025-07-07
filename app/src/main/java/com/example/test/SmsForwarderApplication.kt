@@ -1,0 +1,38 @@
+package com.example.test
+
+import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class SmsForwarderApplication : Application() {
+
+    companion object {
+        const val CHANNEL_ID = "sms_forwarder_channel"
+        const val CHANNEL_NAME = "SMS Forwarder"
+        const val CHANNEL_DESCRIPTION = "Notifications for SMS forwarding status"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = CHANNEL_DESCRIPTION
+            }
+
+            val notificationManager: NotificationManager =
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+} 
