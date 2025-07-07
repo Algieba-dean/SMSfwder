@@ -2,8 +2,8 @@
 
 > 自动将重要短信转发到您的邮箱，让您永不错过重要消息！
 
-[![Build Status](https://github.com/YOUR_USERNAME/Test/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/YOUR_USERNAME/Test/actions/workflows/build-and-release.yml)
-[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/Test)](https://github.com/YOUR_USERNAME/Test/releases)
+[![Build Status](https://github.com/Algieba-dean/SMSfwder/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/Algieba-dean/SMSfwder/actions/workflows/build-and-release.yml)
+[![Release](https://img.shields.io/github/v/release/Algieba-dean/SMSfwder)](https://github.com/Algieba-dean/SMSfwder/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## ✨ 功能特性
@@ -27,7 +27,7 @@
 
 ### 下载安装
 
-1. 前往 [Releases](https://github.com/YOUR_USERNAME/Test/releases) 页面
+1. 前往 [Releases](https://github.com/Algieba-dean/SMSfwder/releases) 页面
 2. 下载最新版本的APK文件
 3. 在Android设备上启用"允许未知来源"
 4. 安装APK并授予必要权限
@@ -60,8 +60,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/YOUR_USERNAME/Test.git
-cd Test
+git clone https://github.com/Algieba-dean/SMSfwder.git
+cd SMSfwder
 
 # 同步依赖
 ./gradlew build
@@ -159,9 +159,9 @@ app/
 
 ## 📞 支持
 
-- 📝 [提交Issue](https://github.com/YOUR_USERNAME/Test/issues)
-- 💬 [讨论区](https://github.com/YOUR_USERNAME/Test/discussions)
-- 📧 邮件: your-email@example.com
+- 📝 [提交Issue](https://github.com/Algieba-dean/SMSfwder/issues)
+- 💬 [讨论区](https://github.com/Algieba-dean/SMSfwder/discussions)
+- 📧 邮件: algieba.king@gmail.com
 
 ---
 
