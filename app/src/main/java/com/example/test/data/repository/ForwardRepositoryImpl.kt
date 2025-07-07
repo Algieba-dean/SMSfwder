@@ -28,6 +28,10 @@ class ForwardRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getAllRulesSync(): List<ForwardRule> {
+        return forwardRuleDao.getAllRulesSync().map { it.toDomain() }
+    }
+
     override suspend fun getEnabledRules(): List<ForwardRule> {
         return forwardRuleDao.getEnabledRules().map { it.toDomain() }
     }

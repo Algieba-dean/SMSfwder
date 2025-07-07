@@ -76,9 +76,7 @@ fun SmsForwarderApp() {
                 val emailConfigUpdated = savedStateHandle.get<Boolean>("email_config_updated") ?: false
                 
                 SettingsScreen(
-                    onNavigateToEmailConfig = {
-                        navController.navigate(Screen.EmailConfig.route)
-                    }
+                    navController = navController
                 )
                 
                 // Clear the flag after handling

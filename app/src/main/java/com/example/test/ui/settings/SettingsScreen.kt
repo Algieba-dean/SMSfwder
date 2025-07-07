@@ -1,6 +1,10 @@
 package com.example.test.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,23 +19,27 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import android.content.pm.ApplicationInfo
 import com.example.test.utils.PermissionHelper
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateToEmailConfig: () -> Unit = {},
+    navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var showRulesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshEmailConfig()
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         Text(
             text = "设置",
@@ -94,10 +102,10 @@ fun SettingsScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    Button(
-                        onClick = onNavigateToEmailConfig,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                                          Button(
+                         onClick = { navController.navigate("email_config") },
+                         modifier = Modifier.fillMaxWidth()
+                      ) {
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = null
@@ -128,7 +136,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("验证码")
-                        Switch(checked = true, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.verificationCodesEnabled, 
+                            onCheckedChange = { viewModel.toggleVerificationCodes(it) }
+                        )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -136,7 +147,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("银行通知")
-                        Switch(checked = true, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.bankingNotificationsEnabled, 
+                            onCheckedChange = { viewModel.toggleBankingNotifications(it) }
+                        )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -144,13 +158,16 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("拦截垃圾短信")
-                        Switch(checked = false, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.spamFilterEnabled, 
+                            onCheckedChange = { viewModel.toggleSpamFilter(it) }
+                        )
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     OutlinedButton(
-                        onClick = { /* TODO: Navigate to rules config */ },
+                        onClick = { showRulesDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("管理规则")
@@ -178,7 +195,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("转发成功")
-                        Switch(checked = true, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.forwardSuccessNotificationEnabled, 
+                            onCheckedChange = { viewModel.toggleForwardSuccessNotification(it) }
+                        )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -186,7 +206,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("转发失败")
-                        Switch(checked = true, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.forwardFailureNotificationEnabled, 
+                            onCheckedChange = { viewModel.toggleForwardFailureNotification(it) }
+                        )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -194,7 +217,10 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("声音提醒")
-                        Switch(checked = false, onCheckedChange = {})
+                        Switch(
+                            checked = uiState.soundAlertEnabled, 
+                            onCheckedChange = { viewModel.toggleSoundAlert(it) }
+                        )
                     }
                 }
             }
@@ -408,6 +434,13 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showRulesDialog) {
+        RulesDialog(
+            onDismiss = { showRulesDialog = false },
+            onRulesUpdated = { /* TODO: Handle rules update */ }
+        )
+    }
 }
 
 @Composable
@@ -438,4 +471,131 @@ private fun SettingsSection(
         
         content()
     }
+}
+
+@Composable
+fun RulesDialog(
+    onDismiss: () -> Unit,
+    onRulesUpdated: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "转发规则管理",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "当前规则配置:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 验证码规则
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "📱 验证码",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "匹配包含「验证码」、「动态码」等关键词的短信",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 银行通知规则
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "🏦 银行通知",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "匹配银行转账、余额变动等财务相关短信",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 垃圾短信过滤规则
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "🚫 垃圾短信过滤",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "阻止广告、推销等垃圾短信转发",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "💡 提示: 使用设置页面的开关来启用/禁用各项规则",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("了解")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 } 

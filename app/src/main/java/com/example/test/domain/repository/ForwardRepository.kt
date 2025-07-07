@@ -8,6 +8,8 @@ interface ForwardRepository {
     // Forward Rules
     fun getAllRules(): Flow<List<ForwardRule>>
 
+    suspend fun getAllRulesSync(): List<ForwardRule>
+
     suspend fun getEnabledRules(): List<ForwardRule>
 
     fun getEnabledRulesFlow(): Flow<List<ForwardRule>>

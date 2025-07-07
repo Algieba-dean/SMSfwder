@@ -13,36 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 import com.example.test.domain.model.ForwardStatus
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class LogEntry(
-    val id: Long,
-    val timestamp: Long,
-    val level: LogLevel,
-    val message: String,
-    val details: String? = null
-)
-
-enum class LogLevel {
-    INFO, SUCCESS, WARNING, ERROR
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogsScreen() {
-    // Sample log data
-    val sampleLogs = remember {
-        listOf(
-            LogEntry(1, System.currentTimeMillis() - 120000, LogLevel.SUCCESS, "短信转发成功", "来自: +86138****1234"),
-            LogEntry(2, System.currentTimeMillis() - 300000, LogLevel.INFO, "接收短信", "检测到银行通知"),
-            LogEntry(3, System.currentTimeMillis() - 450000, LogLevel.WARNING, "邮件连接较慢", "重试第 1/3 次"),
-            LogEntry(4, System.currentTimeMillis() - 600000, LogLevel.SUCCESS, "短信转发成功", "来自: +86139****5678"),
-            LogEntry(5, System.currentTimeMillis() - 900000, LogLevel.ERROR, "短信转发失败", "SMTP 认证失败"),
-            LogEntry(6, System.currentTimeMillis() - 1200000, LogLevel.INFO, "服务已启动", "短信转发服务已初始化"),
-        )
-    }
+fun LogsScreen(
+    viewModel: LogsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val selectedFilter by viewModel.selectedFilter.collectAsState()
 
     Column(
         modifier = Modifier
@@ -62,16 +45,16 @@ fun LogsScreen() {
             )
             
             Row {
-                IconButton(onClick = { /* TODO: Filter logs */ }) {
+                IconButton(onClick = { viewModel.refreshLogs() }) {
                     Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = "过滤"
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "刷新"
                     )
                 }
-                IconButton(onClick = { /* TODO: Clear logs */ }) {
+                IconButton(onClick = { viewModel.clearLogs() }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "清除"
+                        contentDescription = "清除旧日志"
                     )
                 }
             }
@@ -83,78 +66,128 @@ fun LogsScreen() {
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
+            items(LogFilter.values()) { filter ->
                 FilterChip(
-                    onClick = { /* TODO: Filter all */ },
-                    label = { Text("全部") },
-                    selected = true
-                )
-            }
-            item {
-                FilterChip(
-                    onClick = { /* TODO: Filter success */ },
-                    label = { Text("成功") },
-                    selected = false
-                )
-            }
-            item {
-                FilterChip(
-                    onClick = { /* TODO: Filter errors */ },
-                    label = { Text("错误") },
-                    selected = false
-                )
-            }
-            item {
-                FilterChip(
-                    onClick = { /* TODO: Filter warnings */ },
-                    label = { Text("警告") },
-                    selected = false
+                    onClick = { viewModel.setFilter(filter) },
+                    label = { 
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(filter.displayName)
+                            val count = viewModel.getLogCountByFilter(filter)
+                            if (count > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Badge {
+                                    Text(count.toString())
+                                }
+                            }
+                        }
+                    },
+                    selected = selectedFilter == filter
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Logs List
-        if (sampleLogs.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+        // Content
+        when {
+            uiState.isLoading -> {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Assignment,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
+                        CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "暂无日志",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "活动日志将在此处显示",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
+                        Text("加载日志中...")
                     }
                 }
             }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(sampleLogs) { log ->
-                    LogCard(log = log)
+            
+            uiState.error != null -> {
+                val errorMessage = uiState.error ?: "Unknown error" // Fix smart cast issue
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "加载日志时出错",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.refreshLogs() }
+                        ) {
+                            Text("重试")
+                        }
+                    }
+                }
+            }
+            
+            uiState.filteredLogs.isEmpty() -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assignment,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (selectedFilter == LogFilter.ALL) "暂无日志" else "该类型暂无日志",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (selectedFilter == LogFilter.ALL) 
+                                    "转发活动日志将在此处显示" 
+                                else 
+                                    "尝试选择其他过滤器",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+            }
+            
+            else -> {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.filteredLogs) { log ->
+                        LogCard(log = log)
+                    }
                 }
             }
         }
@@ -209,6 +242,33 @@ private fun LogCard(log: LogEntry) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                
+                // Show SMS content preview for better context
+                log.smsRecord?.let { record ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Text(
+                                text = "短信内容:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (record.content.length > 100) 
+                                    "${record.content.take(100)}..." 
+                                else 
+                                    record.content,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -216,17 +276,17 @@ private fun LogCard(log: LogEntry) {
 
 @Composable
 private fun LogLevelIcon(level: LogLevel) {
-    val (icon, color) = when (level) {
-        LogLevel.SUCCESS -> Icons.Default.CheckCircle to Color.Green
-        LogLevel.ERROR -> Icons.Default.Error to Color.Red
-        LogLevel.WARNING -> Icons.Default.Warning to Color(0xFFFF9800)
-        LogLevel.INFO -> Icons.Default.Info to MaterialTheme.colorScheme.primary
+    val (icon, tint) = when (level) {
+        LogLevel.SUCCESS -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.primary
+        LogLevel.ERROR -> Icons.Default.Error to MaterialTheme.colorScheme.error  
+        LogLevel.WARNING -> Icons.Default.Warning to Color(0xFFF57C00) // Orange
+        LogLevel.INFO -> Icons.Default.Info to MaterialTheme.colorScheme.outline
     }
     
     Icon(
         imageVector = icon,
-        contentDescription = level.name,
-        modifier = Modifier.size(20.dp),
-        tint = color
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.size(20.dp)
     )
 } 
