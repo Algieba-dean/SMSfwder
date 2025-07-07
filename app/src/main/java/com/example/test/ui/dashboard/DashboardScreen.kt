@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import com.example.test.utils.PermissionHelper
 import com.example.test.domain.model.ForwardStatus
 import com.example.test.domain.model.SmsMessage
 import java.text.SimpleDateFormat
@@ -25,6 +27,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val hasSmsPermissions = PermissionHelper.hasSmsPermissions(context)
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
@@ -59,6 +63,7 @@ fun DashboardScreen(
         // Service Status Card
         ServiceStatusCard(
             isServiceActive = uiState.isServiceActive,
+            hasSmsPermissions = hasSmsPermissions,
             onToggleService = viewModel::toggleService
         )
 
@@ -149,61 +154,105 @@ fun DashboardScreen(
 @Composable
 private fun ServiceStatusCard(
     isServiceActive: Boolean,
+    hasSmsPermissions: Boolean,
     onToggleService: () -> Unit
 ) {
+    val realServiceStatus = isServiceActive && hasSmsPermissions
+    val cardColor = when {
+        realServiceStatus -> MaterialTheme.colorScheme.primaryContainer
+        !hasSmsPermissions -> MaterialTheme.colorScheme.errorContainer  
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isServiceActive) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.errorContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(16.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = if (isServiceActive) Icons.Default.CheckCircle else Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = if (isServiceActive) 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onErrorContainer
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = if (isServiceActive) "服务运行中" else "服务已停止",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (isServiceActive) 
-                            MaterialTheme.colorScheme.onPrimaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.onErrorContainer
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = when {
+                            realServiceStatus -> Icons.Default.CheckCircle
+                            !hasSmsPermissions -> Icons.Default.Warning
+                            else -> Icons.Default.Pause
+                        },
+                        contentDescription = null,
+                        tint = when {
+                            realServiceStatus -> MaterialTheme.colorScheme.onPrimaryContainer
+                            !hasSmsPermissions -> MaterialTheme.colorScheme.onErrorContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = when {
+                                realServiceStatus -> "服务运行中"
+                                !hasSmsPermissions -> "缺少权限"
+                                else -> "服务已停止"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = when {
+                                realServiceStatus -> MaterialTheme.colorScheme.onPrimaryContainer
+                                !hasSmsPermissions -> MaterialTheme.colorScheme.onErrorContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        Text(
+                            text = when {
+                                realServiceStatus -> "短信转发功能正在运行"
+                                !hasSmsPermissions -> "需要SMS权限才能接收短信"
+                                else -> "短信转发功能已停止"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when {
+                                realServiceStatus -> MaterialTheme.colorScheme.onPrimaryContainer
+                                !hasSmsPermissions -> MaterialTheme.colorScheme.onErrorContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+                
+                Switch(
+                    checked = isServiceActive,
+                    onCheckedChange = { onToggleService() },
+                    enabled = hasSmsPermissions
+                )
+            }
+            
+            // 权限状态提示
+            if (!hasSmsPermissions) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isServiceActive) "短信转发功能正在运行" else "短信转发功能已停止",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isServiceActive) 
-                            MaterialTheme.colorScheme.onPrimaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.onErrorContainer
+                        text = "请在应用设置中授予SMS权限",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
-            
-            Switch(
-                checked = isServiceActive,
-                onCheckedChange = { onToggleService() }
-            )
         }
     }
 }

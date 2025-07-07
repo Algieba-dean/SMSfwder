@@ -19,7 +19,7 @@ import com.example.test.data.database.entity.*
         ForwardRecordEntity::class,
         ForwardStatisticsEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -44,6 +44,8 @@ abstract class SmsForwarderDatabase : RoomDatabase() {
                     SmsForwarderDatabase::class.java,
                     DATABASE_NAME
                 )
+                    .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration()
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance
@@ -63,10 +65,14 @@ abstract class SmsForwarderDatabase : RoomDatabase() {
             }
         }
 
-        // Future migrations can be added here
+        // Migration from version 1 to version 2
+        // Added provider field to email_configs table
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Migration logic when needed
+                // Add provider column to email_configs table with default value
+                database.execSQL(
+                    "ALTER TABLE email_configs ADD COLUMN provider TEXT NOT NULL DEFAULT 'GMAIL'"
+                )
             }
         }
     }
