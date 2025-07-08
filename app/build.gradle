@@ -13,18 +13,38 @@ android {
 
     defaultConfig {
         applicationId "com.example.test"
-        minSdk 35
-        targetSdk 35
+        minSdk 26          // Android 8.0+ (覆盖95%+用户)
+        targetSdk 35       // 目标最新版本，获得最新功能
         versionCode 1
-        versionName "1.0.3"
+        versionName "1.0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 签名配置（可选）
+    signingConfigs {
+        release {
+            // 生产环境签名配置
+            // 注意：实际使用时请使用环境变量或gradle.properties
+            // storeFile file('path/to/your/keystore.jks')
+            // storePassword 'your_store_password'
+            // keyAlias 'your_key_alias'
+            // keyPassword 'your_key_password'
+        }
+    }
+
     buildTypes {
+        debug {
+            // Debug版本配置
+            debuggable true
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 如果配置了签名，取消下面的注释
+            // signingConfig signingConfigs.release
         }
     }
     compileOptions {
