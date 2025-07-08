@@ -16,7 +16,7 @@ android {
         minSdk 35
         targetSdk 35
         versionCode 1
-        versionName "1.0.1"
+        versionName "1.0.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,8 +98,12 @@ dependencies {
     // Icons Extended
     implementation "androidx.compose.material:material-icons-extended:1.5.8"
     
-    // Charts (for statistics)
+    // Charts (for statistics) - 使用更稳定的版本
     implementation "com.github.PhilJay:MPAndroidChart:v3.1.0"
+    
+    // 备用图表库（如果MPAndroidChart无法下载，可以切换到这个）
+    // implementation "com.patrykandpatrick.vico:compose:1.13.1"
+    // implementation "com.patrykandpatrick.vico:compose-m3:1.13.1"
     
     // Permissions
     implementation "com.google.accompanist:accompanist-permissions:0.32.0"
