@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id 'kotlin-kapt'
+    alias(libs.plugins.ksp)
     id 'dagger.hilt.android.plugin'
     id 'kotlin-parcelize'
 }
@@ -83,18 +83,18 @@ dependencies {
     
     // Hilt Dependency Injection
     implementation "com.google.dagger:hilt-android:2.48"
-    kapt "com.google.dagger:hilt-compiler:2.48"
+    ksp "com.google.dagger:hilt-compiler:2.48"
     implementation "androidx.hilt:hilt-navigation-compose:1.1.0"
     
     // Room Database
     implementation "androidx.room:room-runtime:2.6.1"
     implementation "androidx.room:room-ktx:2.6.1"
-    kapt "androidx.room:room-compiler:2.6.1"
+    ksp "androidx.room:room-compiler:2.6.1"
     
     // WorkManager
     implementation "androidx.work:work-runtime-ktx:2.9.0"
     implementation "androidx.hilt:hilt-work:1.1.0"
-    kapt "androidx.hilt:hilt-compiler:1.1.0"
+    ksp "androidx.hilt:hilt-compiler:1.1.0"
     
     // ViewModel
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0"
@@ -139,9 +139,9 @@ dependencies {
     
     // Hilt Testing
     testImplementation "com.google.dagger:hilt-android-testing:2.48"
-    kaptTest "com.google.dagger:hilt-compiler:2.48"
+    kspTest "com.google.dagger:hilt-compiler:2.48"
     androidTestImplementation "com.google.dagger:hilt-android-testing:2.48"
-    kaptAndroidTest "com.google.dagger:hilt-compiler:2.48"
+    kspAndroidTest "com.google.dagger:hilt-compiler:2.48"
 }
 
 // Task for GitHub Actions to get version name

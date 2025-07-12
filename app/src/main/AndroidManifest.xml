@@ -18,6 +18,22 @@
     <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    
+    <!-- Battery Optimization Permission for background SMS forwarding -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Hardware Features for Chrome OS compatibility -->
+    <uses-feature 
+        android:name="android.hardware.telephony" 
+        android:required="false" />
+    <uses-feature 
+        android:name="android.hardware.telephony.gsm" 
+        android:required="false" />
+    
+    <!-- 确保应用可以在没有电话功能的设备上运行 -->
+    <uses-feature 
+        android:name="android.hardware.touchscreen" 
+        android:required="false" />
 
     <application
         android:name=".SmsForwarderApplication"
@@ -47,9 +63,27 @@
             android:name=".service.SmsReceiver"
             android:exported="true"
             android:enabled="true">
-            <intent-filter android:priority="2147483647">
+            <intent-filter android:priority="1000">
+                <!-- 标准SMS接收 -->
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
                 <action android:name="android.provider.Telephony.SMS_DELIVER" />
+                
+                <!-- 数据SMS接收 -->
+                <action android:name="android.intent.action.DATA_SMS_RECEIVED" />
+                
+                <!-- Cell Broadcast消息 -->
+                <action android:name="android.provider.Telephony.SMS_CB_RECEIVED" />
+                <action android:name="android.provider.Telephony.SMS_EMERGENCY_CB_RECEIVED" />
+                
+                <!-- WAP推送消息 -->
+                <action android:name="android.provider.Telephony.WAP_PUSH_RECEIVED" />
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                
+                <!-- 服务类别程序数据 -->
+                <action android:name="android.provider.Telephony.SMS_SERVICE_CATEGORY_PROGRAM_DATA_RECEIVED" />
+                
+                <!-- SMS被拒绝 -->
+                <action android:name="android.provider.Telephony.SMS_REJECTED" />
             </intent-filter>
         </receiver>
 

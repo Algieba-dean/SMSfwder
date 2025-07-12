@@ -67,19 +67,10 @@ class ForwardRepositoryImpl @Inject constructor(
     }
 
     override suspend fun initializeDefaultRules() {
-        try {
-            val existingRules = forwardRuleDao.getAllRulesSync()
-            // Only add default rules if no rules exist
-            if (existingRules.isEmpty()) {
-                android.util.Log.d("ForwardRepository", "📝 No existing rules found, initializing default rules...")
-                insertRules(DefaultRules.defaultRules)
-                android.util.Log.d("ForwardRepository", "✅ ${DefaultRules.defaultRules.size} default rules inserted")
-            } else {
-                android.util.Log.d("ForwardRepository", "📋 Found ${existingRules.size} existing rules, skipping initialization")
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("ForwardRepository", "❌ Error initializing default rules: ${e.message}", e)
-        }
+        // 🚀 UNCONDITIONAL FORWARDING MODE: Skip default rules initialization
+        // No rules needed - all SMS will be forwarded unconditionally
+        android.util.Log.d("ForwardRepository", "🚀 UNCONDITIONAL FORWARD MODE: Skipping default rules initialization")
+        android.util.Log.d("ForwardRepository", "📝 All SMS will be forwarded without any filtering rules")
     }
 
     // Forward Records
@@ -178,46 +169,12 @@ class ForwardRepositoryImpl @Inject constructor(
         insertOrUpdateStatistics(statistics)
     }
 
-    // Forward Logic
+    // Forward Logic - UNCONDITIONAL FORWARDING MODE
     override suspend fun shouldForwardMessage(message: SmsMessage): Boolean {
-        val rules = getEnabledRules().sortedByDescending { it.priority }
-        
-        for (rule in rules) {
-            val matches = when (rule.matchType) {
-                MatchType.CONTAINS -> rule.keywords.any { keyword ->
-                    message.content.contains(keyword, ignoreCase = true)
-                }
-                MatchType.STARTS_WITH -> rule.keywords.any { keyword ->
-                    message.content.startsWith(keyword, ignoreCase = true)
-                }
-                MatchType.ENDS_WITH -> rule.keywords.any { keyword ->
-                    message.content.endsWith(keyword, ignoreCase = true)
-                }
-                MatchType.REGEX -> rule.keywords.any { pattern ->
-                    try {
-                        Pattern.compile(pattern).matcher(message.content).find()
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-                MatchType.SENDER_EQUALS -> rule.senderPatterns.any { pattern ->
-                    message.sender.equals(pattern, ignoreCase = true)
-                }
-                MatchType.SENDER_CONTAINS -> rule.senderPatterns.any { pattern ->
-                    message.sender.contains(pattern, ignoreCase = true)
-                }
-            }
-
-            if (matches) {
-                return when (rule.ruleType) {
-                    RuleType.INCLUDE -> true
-                    RuleType.EXCLUDE -> false
-                }
-            }
-        }
-
-        // Default behavior: forward if no rules match
-        return false
+        // 🚀 UNCONDITIONAL FORWARDING: Always forward all SMS messages
+        // No filtering, no rules checking - forward everything
+        android.util.Log.d("ForwardRepository", "🚀 UNCONDITIONAL FORWARD MODE: Always forward SMS from ${message.sender}")
+        return true
     }
 
     override suspend fun processMessage(message: SmsMessage): ForwardRecord? {

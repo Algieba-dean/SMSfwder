@@ -6,6 +6,9 @@ import com.example.test.data.database.SmsForwarderDatabase
 import com.example.test.data.database.dao.*
 import com.example.test.data.repository.*
 import com.example.test.domain.repository.*
+import com.example.test.utils.ForegroundServiceManager
+import com.example.test.utils.PermissionHelper
+import com.example.test.utils.VendorPermissionHelper
 import dagger.Module
 import dagger.Provides
 import dagger.Binds
@@ -68,4 +71,27 @@ abstract class RepositoryModule {
     abstract fun bindForwardRepository(
         forwardRepositoryImpl: ForwardRepositoryImpl
     ): ForwardRepository
+} 
+
+@Module
+@InstallIn(SingletonComponent::class)
+object UtilityModule {
+
+    @Provides
+    @Singleton
+    fun providePermissionHelper(): PermissionHelper {
+        return PermissionHelper
+    }
+
+    @Provides
+    @Singleton
+    fun provideForegroundServiceManager(): ForegroundServiceManager {
+        return ForegroundServiceManager
+    }
+
+    @Provides
+    @Singleton
+    fun provideVendorPermissionHelper(): VendorPermissionHelper {
+        return VendorPermissionHelper
+    }
 } 
