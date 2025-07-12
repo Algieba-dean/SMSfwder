@@ -26,29 +26,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Configure repositories for GitHub Actions
-        run: |
-          mkdir -p ~/.gradle
-          cat > ~/.gradle/init.gradle << 'EOF'
-          allprojects {
-              repositories.clear()
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-                  maven { url "https://jitpack.io" }
-              }
-          }
-          settingsEvaluated { settings ->
-              settings.pluginManagement {
-                  repositories {
-                      gradlePluginPortal()
-                      google()
-                      mavenCentral()
-                  }
-              }
-          }
-          EOF
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Clean project
@@ -67,29 +44,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Configure repositories for GitHub Actions
-        run: |
-          mkdir -p ~/.gradle
-          cat > ~/.gradle/init.gradle << 'EOF'
-          allprojects {
-              repositories.clear()
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-                  maven { url "https://jitpack.io" }
-              }
-          }
-          settingsEvaluated { settings ->
-              settings.pluginManagement {
-                  repositories {
-                      gradlePluginPortal()
-                      google()
-                      mavenCentral()
-                  }
-              }
-          }
-          EOF
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Clean project
