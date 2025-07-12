@@ -16,8 +16,10 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.test.domain.model.ExecutionStrategy
 import com.example.test.utils.BackgroundReliabilityManager
+import com.example.test.utils.CompatibilityChecker
 import com.example.test.utils.ForegroundServiceManager
 import com.example.test.utils.PermissionHelper
+import com.example.test.utils.SimCardManager
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +59,9 @@ class SmsReceiver : BroadcastReceiver() {
         try {
             val preferencesManager = com.example.test.data.preferences.PreferencesManager(context)
             val permissionHelper = PermissionHelper
-            backgroundReliabilityManager = BackgroundReliabilityManager(context, preferencesManager, permissionHelper)
+            val chineseOEMEnhancer = com.example.test.utils.ChineseOEMEnhancer(context)
+            val compatibilityChecker = CompatibilityChecker(context, preferencesManager, chineseOEMEnhancer)
+            backgroundReliabilityManager = BackgroundReliabilityManager(context, preferencesManager, permissionHelper, compatibilityChecker)
             // ForegroundServiceManager是object单例，不需要手动初始化
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize dependencies: ${e.message}", e)
@@ -202,14 +206,40 @@ class SmsReceiver : BroadcastReceiver() {
         Log.d(TAG, "📨 Processing SMS from: $sender, length: ${content.length} chars")
         Log.d(TAG, "📝 Content preview: ${content.take(50)}${if (content.length > 50) "..." else ""}")
 
-        enqueueSmsProcessing(context, sender, content, timestamp)
+        // Extract SIM card information
+        var simSlot: String? = null
+        var simOperator: String? = null
+        
+        try {
+            val simCardInfo = SimCardManager.getSimByPhoneNumber(context, sender)
+            
+            if (simCardInfo != null) {
+                simSlot = simCardInfo.getFriendlyName()
+                simOperator = simCardInfo.carrierName
+                Log.d(TAG, "📱 SIM info detected - Slot: $simSlot, Operator: $simOperator")
+            } else {
+                // Try to get primary SIM if phone number lookup fails
+                val primarySimInfo = SimCardManager.getPrimarySimCard(context)
+                if (primarySimInfo != null) {
+                    simSlot = primarySimInfo.getFriendlyName()
+                    simOperator = primarySimInfo.carrierName
+                    Log.d(TAG, "📱 Using primary SIM info - Slot: $simSlot, Operator: $simOperator")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Failed to extract SIM card info: ${e.message}")
+        }
+
+        enqueueSmsProcessing(context, sender, content, timestamp, simSlot, simOperator)
     }
 
-    private fun enqueueSmsProcessing(context: Context, sender: String, content: String, timestamp: Long) {
+    private fun enqueueSmsProcessing(context: Context, sender: String, content: String, timestamp: Long, simSlot: String? = null, simOperator: String? = null) {
         Log.d(TAG, "📤 Enqueueing SMS processing (SIMPLE MODE):")
         Log.d(TAG, "   📞 Sender: $sender")
         Log.d(TAG, "   📝 Content length: ${content.length}")
         Log.d(TAG, "   🕐 Timestamp: $timestamp")
+        Log.d(TAG, "   📱 SIM Slot: ${simSlot ?: "Unknown"}")
+        Log.d(TAG, "   📡 SIM Operator: ${simOperator ?: "Unknown"}")
         
         // 获取最优执行策略（保留基本的后台保障机制）
         val optimalStrategy = backgroundReliabilityManager.getOptimalStrategy()
@@ -219,21 +249,21 @@ class SmsReceiver : BroadcastReceiver() {
         // 简化策略选择逻辑
         when (optimalStrategy) {
             ExecutionStrategy.FOREGROUND_SERVICE -> {
-                enqueueForegroundServiceProcessing(context, sender, content, timestamp)
+                enqueueForegroundServiceProcessing(context, sender, content, timestamp, simSlot, simOperator)
             }
             ExecutionStrategy.WORK_MANAGER_EXPEDITED -> {
-                enqueueWorkManagerProcessing(context, sender, content, timestamp, true)
+                enqueueWorkManagerProcessing(context, sender, content, timestamp, true, simSlot, simOperator)
             }
             ExecutionStrategy.WORK_MANAGER_NORMAL -> {
-                enqueueWorkManagerProcessing(context, sender, content, timestamp, false)
+                enqueueWorkManagerProcessing(context, sender, content, timestamp, false, simSlot, simOperator)
             }
             ExecutionStrategy.HYBRID_AUTO_SWITCH -> {
                 // 混合策略：根据当前设备状态动态选择
                 val shouldUseForegroundService = backgroundReliabilityManager.shouldUseForegroundService()
                 if (shouldUseForegroundService) {
-                    enqueueForegroundServiceProcessing(context, sender, content, timestamp)
+                    enqueueForegroundServiceProcessing(context, sender, content, timestamp, simSlot, simOperator)
                 } else {
-                    enqueueWorkManagerProcessing(context, sender, content, timestamp, true) // 默认使用expedited
+                    enqueueWorkManagerProcessing(context, sender, content, timestamp, true, simSlot, simOperator) // 默认使用expedited
                 }
             }
         }
@@ -247,7 +277,9 @@ class SmsReceiver : BroadcastReceiver() {
         sender: String,
         content: String,
         timestamp: Long,
-        useExpedited: Boolean
+        useExpedited: Boolean,
+        simSlot: String? = null,
+        simOperator: String? = null
     ) {
         Log.d(TAG, "⚙️ Using WorkManager for SMS processing (expedited: $useExpedited)")
         
@@ -269,7 +301,9 @@ class SmsReceiver : BroadcastReceiver() {
                     "timestamp" to timestamp,
                     "originalTimestamp" to timestamp,
                     "queueTime" to System.currentTimeMillis(),
-                    "executionStrategy" to if (useExpedited) ExecutionStrategy.WORK_MANAGER_EXPEDITED.name else ExecutionStrategy.WORK_MANAGER_NORMAL.name
+                    "executionStrategy" to if (useExpedited) ExecutionStrategy.WORK_MANAGER_EXPEDITED.name else ExecutionStrategy.WORK_MANAGER_NORMAL.name,
+                    "simSlot" to (simSlot ?: ""),
+                    "simOperator" to (simOperator ?: "")
                 )
             )
             .setConstraints(constraints)
@@ -363,7 +397,9 @@ class SmsReceiver : BroadcastReceiver() {
         context: Context,
         sender: String,
         content: String,
-        timestamp: Long
+        timestamp: Long,
+        simSlot: String? = null,
+        simOperator: String? = null
     ) {
         Log.d(TAG, "🔔 Using foreground service for SMS processing")
         

@@ -10,8 +10,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.mail.*
 import javax.mail.internet.InternetAddress
@@ -242,6 +246,217 @@ class EmailConfigViewModel @Inject constructor(
             successMessage = null
         )
     }
+
+    // ===== 配置管理功能 =====
+
+    /**
+     * 清空所有邮箱配置
+     */
+    fun clearAllConfigs() {
+        _uiState.value = _uiState.value.copy(
+            isManaging = true,
+            errorMessage = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val allConfigs = emailRepository.getAllConfigs().first()
+                allConfigs.forEach { config ->
+                    emailRepository.deleteConfig(config)
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    successMessage = "所有配置已清空",
+                    hasExistingConfig = false,
+                    // 重置表单
+                    senderEmail = "",
+                    senderPassword = "",
+                    receiverEmail = "",
+                    smtpHost = "",
+                    smtpPort = 587,
+                    enableTLS = true,
+                    enableSSL = false,
+                    selectedProvider = EmailProvider.GMAIL
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    errorMessage = "清空配置失败：${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 导出配置到JSON字符串
+     */
+    fun exportConfigs() {
+        _uiState.value = _uiState.value.copy(
+            isManaging = true,
+            errorMessage = null
+        )
+        
+        viewModelScope.launch {
+            try {
+                val allConfigs = emailRepository.getAllConfigs().first()
+                val exportData = EmailConfigExport(
+                    version = "1.0",
+                    timestamp = System.currentTimeMillis(),
+                    configs = allConfigs.map { config ->
+                        ExportableEmailConfig(
+                            senderEmail = config.senderEmail,
+                            receiverEmail = config.receiverEmail,
+                            smtpHost = config.smtpHost,
+                            smtpPort = config.smtpPort,
+                            enableTLS = config.enableTLS,
+                            enableSSL = config.enableSSL,
+                            provider = config.provider.name,
+                            isDefault = config.isDefault
+                        )
+                    }
+                )
+                
+                val json = Json { prettyPrint = true }
+                val exportJson = json.encodeToString(exportData)
+                
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    successMessage = "配置导出成功",
+                    exportedConfigJson = exportJson
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    errorMessage = "导出配置失败：${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 从JSON字符串导入配置
+     */
+    fun importConfigs(jsonData: String) {
+        if (jsonData.isBlank()) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "导入数据不能为空"
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            isManaging = true,
+            errorMessage = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val json = Json { ignoreUnknownKeys = true }
+                val exportData = json.decodeFromString<EmailConfigExport>(jsonData)
+                
+                var importedCount = 0
+                exportData.configs.forEach { exportConfig ->
+                    try {
+                        val provider = EmailProvider.valueOf(exportConfig.provider)
+                        val config = EmailConfig(
+                            id = 0, // 让数据库自动分配ID
+                            senderEmail = exportConfig.senderEmail,
+                            senderPassword = "", // 密码不导入，需要用户重新输入
+                            receiverEmail = exportConfig.receiverEmail,
+                            smtpHost = exportConfig.smtpHost,
+                            smtpPort = exportConfig.smtpPort,
+                            enableTLS = exportConfig.enableTLS,
+                            enableSSL = exportConfig.enableSSL,
+                            provider = provider,
+                            isDefault = exportConfig.isDefault
+                        )
+                        
+                        emailRepository.insertConfig(config)
+                        importedCount++
+                    } catch (e: Exception) {
+                        // 单个配置导入失败，继续处理其他配置
+                        // continue语句在forEach中不适用，直接跳过即可
+                    }
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    successMessage = "成功导入 $importedCount 个配置（密码需要重新设置）",
+                    hasExistingConfig = importedCount > 0
+                )
+
+                // 如果导入了配置，重新加载当前配置
+                if (importedCount > 0) {
+                    loadExistingConfig()
+                }
+
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isManaging = false,
+                    errorMessage = "导入配置失败：${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 获取所有配置列表
+     */
+    fun loadAllConfigs() {
+        viewModelScope.launch {
+            try {
+                val allConfigs = emailRepository.getAllConfigs().first()
+                _uiState.value = _uiState.value.copy(
+                    allConfigs = allConfigs
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "加载配置列表失败：${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 删除指定配置
+     */
+    fun deleteConfig(config: EmailConfig) {
+        viewModelScope.launch {
+            try {
+                emailRepository.deleteConfig(config)
+                loadAllConfigs() // 重新加载列表
+                _uiState.value = _uiState.value.copy(
+                    successMessage = "配置删除成功"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "删除配置失败：${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * 切换配置管理界面显示状态
+     */
+    fun toggleConfigManagement() {
+        val currentState = _uiState.value
+        _uiState.value = currentState.copy(
+            showConfigManagement = !currentState.showConfigManagement
+        )
+        
+        if (_uiState.value.showConfigManagement) {
+            loadAllConfigs()
+        }
+    }
+
+    /**
+     * 清空导出的JSON数据
+     */
+    fun clearExportedJson() {
+        _uiState.value = _uiState.value.copy(exportedConfigJson = null)
+    }
 }
 
 data class EmailConfigUiState(
@@ -255,7 +470,36 @@ data class EmailConfigUiState(
     val selectedProvider: EmailProvider = EmailProvider.GMAIL,
     val isTestingConnection: Boolean = false,
     val isSaving: Boolean = false,
+    val isManaging: Boolean = false,
     val hasExistingConfig: Boolean = false,
+    val showConfigManagement: Boolean = false,
+    val allConfigs: List<EmailConfig> = emptyList(),
+    val exportedConfigJson: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
+)
+
+/**
+ * 可序列化的邮箱配置数据（用于导出导入）
+ */
+@Serializable
+data class ExportableEmailConfig(
+    val senderEmail: String,
+    val receiverEmail: String,
+    val smtpHost: String,
+    val smtpPort: Int,
+    val enableTLS: Boolean,
+    val enableSSL: Boolean,
+    val provider: String,
+    val isDefault: Boolean
+)
+
+/**
+ * 邮箱配置导出数据结构
+ */
+@Serializable
+data class EmailConfigExport(
+    val version: String,
+    val timestamp: Long,
+    val configs: List<ExportableEmailConfig>
 ) 

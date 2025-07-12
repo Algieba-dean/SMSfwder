@@ -38,6 +38,18 @@ class PreferencesManager @Inject constructor(
         private const val KEY_BACKGROUND_CAPABILITY_CACHE = "background_capability_cache"
         private const val KEY_OPTIMIZATION_ENABLED = "optimization_enabled"
         
+        // 心跳检测相关keys
+        private const val KEY_HEARTBEAT_ENABLED = "heartbeat_enabled"
+        private const val KEY_HEARTBEAT_INTERVAL = "heartbeat_interval"
+        private const val KEY_HEARTBEAT_EMAIL_ENABLED = "heartbeat_email_enabled"
+        private const val KEY_LAST_HEARTBEAT_TIME = "last_heartbeat_time"
+        private const val KEY_LAST_HEARTBEAT_SCORE = "last_heartbeat_score"
+        private const val KEY_LAST_HEARTBEAT_SUCCESS = "last_heartbeat_success"
+        
+        // SIM卡设置相关keys
+        private const val KEY_CUSTOM_SIM_NUMBERS = "custom_sim_numbers"
+        private const val KEY_SIM_DISPLAY_NAMES = "sim_display_names"
+        
         // 历史记录限制
         private const val MAX_EXECUTION_HISTORY = 100
         private const val MAX_SWITCH_HISTORY = 50
@@ -291,6 +303,181 @@ class PreferencesManager @Inject constructor(
             .remove("${KEY_BACKGROUND_CAPABILITY_CACHE}_score")
             .remove("${KEY_BACKGROUND_CAPABILITY_CACHE}_expiry")
             .putLong(KEY_LAST_EVALUATION_TIME, 0L)
+            .apply()
+    }
+    
+    // 心跳检测相关属性
+    
+    /**
+     * 是否启用心跳检测
+     */
+    var heartbeatEnabled: Boolean
+        get() = preferences.getBoolean(KEY_HEARTBEAT_ENABLED, true)
+        set(value) = preferences.edit().putBoolean(KEY_HEARTBEAT_ENABLED, value).apply()
+    
+    /**
+     * 心跳检测间隔（分钟）
+     * 默认30分钟，最小15分钟
+     */
+    var heartbeatInterval: Int
+        get() = preferences.getInt(KEY_HEARTBEAT_INTERVAL, 30).coerceAtLeast(15)
+        set(value) = preferences.edit().putInt(KEY_HEARTBEAT_INTERVAL, value.coerceAtLeast(15)).apply()
+    
+    /**
+     * 是否发送心跳邮件
+     */
+    var heartbeatEmailEnabled: Boolean
+        get() = preferences.getBoolean(KEY_HEARTBEAT_EMAIL_ENABLED, false)
+        set(value) = preferences.edit().putBoolean(KEY_HEARTBEAT_EMAIL_ENABLED, value).apply()
+    
+    /**
+     * 最后一次心跳检测时间
+     */
+    var lastHeartbeatTime: Long
+        get() = preferences.getLong(KEY_LAST_HEARTBEAT_TIME, 0L)
+        set(value) = preferences.edit().putLong(KEY_LAST_HEARTBEAT_TIME, value).apply()
+    
+    /**
+     * 最后一次心跳检测评分
+     */
+    var lastHeartbeatScore: Int
+        get() = preferences.getInt(KEY_LAST_HEARTBEAT_SCORE, 0)
+        set(value) = preferences.edit().putInt(KEY_LAST_HEARTBEAT_SCORE, value.coerceIn(0, 100)).apply()
+    
+    /**
+     * 最后一次心跳检测是否成功
+     */
+    var lastHeartbeatSuccess: Boolean
+        get() = preferences.getBoolean(KEY_LAST_HEARTBEAT_SUCCESS, false)
+        set(value) = preferences.edit().putBoolean(KEY_LAST_HEARTBEAT_SUCCESS, value).apply()
+    
+    /**
+     * 获取心跳检测状态摘要
+     */
+    fun getHeartbeatStatusSummary(): Map<String, Any> {
+        return mapOf(
+            "enabled" to heartbeatEnabled,
+            "interval" to heartbeatInterval,
+            "emailEnabled" to heartbeatEmailEnabled,
+            "lastCheckTime" to lastHeartbeatTime,
+            "lastScore" to lastHeartbeatScore,
+            "lastSuccess" to lastHeartbeatSuccess,
+            "daysSinceLastCheck" to if (lastHeartbeatTime > 0) {
+                (System.currentTimeMillis() - lastHeartbeatTime) / (24 * 60 * 60 * 1000L)
+            } else -1L
+        )
+    }
+    
+    /**
+     * 重置心跳检测数据
+     */
+    fun resetHeartbeatData() {
+        preferences.edit()
+            .remove(KEY_LAST_HEARTBEAT_TIME)
+            .remove(KEY_LAST_HEARTBEAT_SCORE)
+            .remove(KEY_LAST_HEARTBEAT_SUCCESS)
+            .apply()
+    }
+    
+    // SIM卡设置相关方法
+    
+    /**
+     * 保存自定义SIM卡号码映射 (卡槽索引 -> 手机号码)
+     */
+    fun saveCustomSimNumbers(simNumbers: Map<Int, String>) {
+        val json = gson.toJson(simNumbers)
+        preferences.edit().putString(KEY_CUSTOM_SIM_NUMBERS, json).apply()
+    }
+    
+    /**
+     * 获取自定义SIM卡号码映射
+     */
+    fun getCustomSimNumbers(): Map<Int, String> {
+        val json = preferences.getString(KEY_CUSTOM_SIM_NUMBERS, null)
+        return if (json != null) {
+            try {
+                val type = object : TypeToken<Map<Int, String>>() {}.type
+                gson.fromJson(json, type) ?: emptyMap()
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        } else {
+            emptyMap()
+        }
+    }
+    
+    /**
+     * 设置指定卡槽的自定义手机号码
+     */
+    fun setCustomSimNumber(slotIndex: Int, phoneNumber: String?) {
+        val currentNumbers = getCustomSimNumbers().toMutableMap()
+        if (phoneNumber.isNullOrBlank()) {
+            currentNumbers.remove(slotIndex)
+        } else {
+            currentNumbers[slotIndex] = phoneNumber
+        }
+        saveCustomSimNumbers(currentNumbers)
+    }
+    
+    /**
+     * 获取指定卡槽的自定义手机号码
+     */
+    fun getCustomSimNumber(slotIndex: Int): String? {
+        return getCustomSimNumbers()[slotIndex]
+    }
+    
+    /**
+     * 保存自定义SIM卡显示名称映射 (卡槽索引 -> 显示名称)
+     */
+    fun saveSimDisplayNames(displayNames: Map<Int, String>) {
+        val json = gson.toJson(displayNames)
+        preferences.edit().putString(KEY_SIM_DISPLAY_NAMES, json).apply()
+    }
+    
+    /**
+     * 获取自定义SIM卡显示名称映射
+     */
+    fun getSimDisplayNames(): Map<Int, String> {
+        val json = preferences.getString(KEY_SIM_DISPLAY_NAMES, null)
+        return if (json != null) {
+            try {
+                val type = object : TypeToken<Map<Int, String>>() {}.type
+                gson.fromJson(json, type) ?: emptyMap()
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        } else {
+            emptyMap()
+        }
+    }
+    
+    /**
+     * 设置指定卡槽的自定义显示名称
+     */
+    fun setSimDisplayName(slotIndex: Int, displayName: String?) {
+        val currentNames = getSimDisplayNames().toMutableMap()
+        if (displayName.isNullOrBlank()) {
+            currentNames.remove(slotIndex)
+        } else {
+            currentNames[slotIndex] = displayName
+        }
+        saveSimDisplayNames(currentNames)
+    }
+    
+    /**
+     * 获取指定卡槽的自定义显示名称
+     */
+    fun getSimDisplayName(slotIndex: Int): String? {
+        return getSimDisplayNames()[slotIndex]
+    }
+    
+    /**
+     * 清除所有SIM卡自定义设置
+     */
+    fun clearSimSettings() {
+        preferences.edit()
+            .remove(KEY_CUSTOM_SIM_NUMBERS)
+            .remove(KEY_SIM_DISPLAY_NAMES)
             .apply()
     }
 } 

@@ -22,6 +22,10 @@ data class ForwardRecordEntity(
     val retryCount: Int = 0,
     val matchedRuleId: Long? = null,
     
+    // SIM卡信息字段
+    val simSlot: String? = null,              // SIM卡槽标识 (如: "SIM1", "SIM2", "SLOT_0", "SLOT_1")
+    val simOperator: String? = null,          // SIM卡运营商名称 (如: "中国移动", "中国联通", "中国电信")
+    
     // 监控扩展字段
     val executionStrategy: String? = null,        // 执行策略类型 (WORK_MANAGER_EXPEDITED, FOREGROUND_SERVICE等)
     val messageType: String? = null,              // 短信类型 (VERIFICATION_CODE, BANK_NOTIFICATION等)
@@ -58,6 +62,10 @@ fun ForwardRecordEntity.toDomain(): ForwardRecord {
         processingTime = processingTime,
         retryCount = retryCount,
         matchedRuleId = matchedRuleId,
+        
+        // SIM卡信息映射
+        simSlot = simSlot,
+        simOperator = simOperator,
         
         // 监控字段映射
         executionStrategy = executionStrategy,
@@ -96,6 +104,10 @@ fun ForwardRecord.toEntity(): ForwardRecordEntity {
         processingTime = processingTime,
         retryCount = retryCount,
         matchedRuleId = matchedRuleId,
+        
+        // SIM卡信息映射
+        simSlot = simSlot,
+        simOperator = simOperator,
         
         // 监控字段映射
         executionStrategy = executionStrategy,

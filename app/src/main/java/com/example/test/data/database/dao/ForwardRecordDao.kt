@@ -52,4 +52,26 @@ interface ForwardRecordDao {
 
     @Query("UPDATE forward_records SET status = :status, errorMessage = :errorMessage, retryCount = retryCount + 1 WHERE id = :id")
     suspend fun updateRecordStatus(id: Long, status: ForwardStatus, errorMessage: String?)
+    
+    // SIM卡相关查询方法
+    @Query("SELECT * FROM forward_records WHERE simSlot = :simSlot ORDER BY timestamp DESC")
+    fun getRecordsBySimSlot(simSlot: String): Flow<List<ForwardRecordEntity>>
+    
+    @Query("SELECT * FROM forward_records WHERE simOperator = :simOperator ORDER BY timestamp DESC")
+    fun getRecordsBySimOperator(simOperator: String): Flow<List<ForwardRecordEntity>>
+    
+    @Query("SELECT * FROM forward_records WHERE simSlot = :simSlot AND simOperator = :simOperator ORDER BY timestamp DESC")
+    fun getRecordsBySimSlotAndOperator(simSlot: String, simOperator: String): Flow<List<ForwardRecordEntity>>
+    
+    @Query("SELECT DISTINCT simSlot FROM forward_records WHERE simSlot IS NOT NULL ORDER BY simSlot")
+    suspend fun getDistinctSimSlots(): List<String>
+    
+    @Query("SELECT DISTINCT simOperator FROM forward_records WHERE simOperator IS NOT NULL ORDER BY simOperator")
+    suspend fun getDistinctSimOperators(): List<String>
+    
+    @Query("SELECT COUNT(*) FROM forward_records WHERE simSlot = :simSlot AND DATE(timestamp/1000, 'unixepoch') = DATE('now')")
+    suspend fun getTodayRecordCountBySimSlot(simSlot: String): Int
+    
+    @Query("SELECT COUNT(*) FROM forward_records WHERE simSlot = :simSlot AND status = :status AND DATE(timestamp/1000, 'unixepoch') = DATE('now')")
+    suspend fun getTodayRecordCountBySimSlotAndStatus(simSlot: String, status: ForwardStatus): Int
 } 

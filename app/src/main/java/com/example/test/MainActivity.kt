@@ -35,16 +35,16 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun checkAndRequestSmsPermissions() {
-        if (!PermissionHelper.hasSmsPermissions(this)) {
+        if (!PermissionHelper.hasAllRequiredPermissions(this)) {
             if (PermissionHelper.shouldShowRequestPermissionRationale(this)) {
                 // Show explanation to user
                 Toast.makeText(
                     this,
-                    "SMS转发器需要短信权限来监听和转发短信",
+                    "SMS转发器需要短信权限、电话状态权限来监听转发短信和读取SIM卡信息",
                     Toast.LENGTH_LONG
                 ).show()
             }
-            PermissionHelper.requestSmsPermissions(this)
+            PermissionHelper.requestAllRequiredPermissions(this)
         }
     }
     
@@ -60,10 +60,22 @@ class MainActivity : ComponentActivity() {
             permissions = permissions,
             grantResults = grantResults,
             onGranted = {
-                Toast.makeText(this, "SMS权限已授予，应用现在可以接收短信", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "所有权限已授予，应用可以正常工作", Toast.LENGTH_SHORT).show()
             },
             onDenied = {
-                Toast.makeText(this, "没有SMS权限，应用无法正常工作", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "缺少必要权限，应用可能无法正常工作", Toast.LENGTH_LONG).show()
+            },
+            onPartiallyGranted = { granted, denied ->
+                val message = buildString {
+                    append("部分权限已授予\n")
+                    if (granted.isNotEmpty()) {
+                        append("已授予: ${granted.joinToString(", ")}\n")
+                    }
+                    if (denied.isNotEmpty()) {
+                        append("被拒绝: ${denied.joinToString(", ")}")
+                    }
+                }
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             }
         )
     }

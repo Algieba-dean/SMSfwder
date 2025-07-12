@@ -16,8 +16,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import com.example.test.BuildConfig
 import com.example.test.ui.settings.components.BackgroundOptimizationCard
 import com.example.test.ui.settings.components.PermissionGuideDialog
+import com.example.test.ui.settings.components.SimCardInfoCard
+import com.example.test.ui.settings.components.CompatibilityCard
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +97,122 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(if (uiState.isEmailConfigured) "编辑配置" else "立即配置")
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // SIM Card Information Section
+        SettingsSection(
+            title = "SIM卡信息",
+            icon = Icons.Default.SimCard
+        ) {
+            SimCardInfoCard(
+                simStatus = uiState.simStatus,
+                isLoading = !uiState.simInfoLoaded,
+                onRefresh = { viewModel.refreshSimCardInfo() }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Compatibility Check Section
+        SettingsSection(
+            title = "设备兼容性",
+            icon = Icons.Default.VerifiedUser
+        ) {
+            CompatibilityCard(
+                compatibilityReport = uiState.compatibilityReport,
+                isLoading = !uiState.compatibilityLoaded,
+                isRunningCheck = uiState.isRunningCompatibilityCheck,
+                onRunCheck = { viewModel.refreshCompatibilityInfo(forceRefresh = false) },
+                onForceRefresh = { viewModel.refreshCompatibilityInfo(forceRefresh = true) }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Heartbeat Monitoring Section
+        SettingsSection(
+            title = "定期检测",
+            icon = Icons.Default.MonitorHeart
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = when {
+                        !uiState.heartbeatEnabled -> MaterialTheme.colorScheme.tertiaryContainer
+                        uiState.lastHeartbeatSuccess -> MaterialTheme.colorScheme.primaryContainer
+                        uiState.lastHeartbeatTime == 0L -> MaterialTheme.colorScheme.secondaryContainer
+                        else -> MaterialTheme.colorScheme.errorContainer
+                    }
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = viewModel.getHeartbeatStatusText(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (uiState.heartbeatEnabled) "每 ${uiState.heartbeatInterval} 分钟检测一次" else "定期健康检测已禁用",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        
+                        Switch(
+                            checked = uiState.heartbeatEnabled,
+                            onCheckedChange = { viewModel.toggleHeartbeat(it) }
+                        )
+                    }
+                    
+                    if (uiState.heartbeatEnabled) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.triggerImmediateHeartbeat() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("立即检测")
+                            }
+                            
+                            Button(
+                                onClick = { 
+                                    // 可以导航到详细配置页面
+                                    // navController.navigate("heartbeat_config")
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("配置")
+                            }
+                        }
                     }
                 }
             }
@@ -177,6 +297,17 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.forwardFailureNotificationEnabled, 
                             onCheckedChange = { viewModel.toggleForwardFailureNotification(it) }
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("心跳邮件")
+                        Switch(
+                            checked = uiState.heartbeatEmailEnabled, 
+                            onCheckedChange = { viewModel.toggleHeartbeatEmail(it) }
                         )
                     }
                 }
@@ -284,13 +415,20 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     val isDebugMode = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                    val packageInfo = remember {
+                        try {
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("版本")
-                        Text("1.0.0 ${if (isDebugMode) "(Debug)" else ""}")
+                        Text("${packageInfo?.versionName ?: "1.0.6"} ${if (isDebugMode) "(Debug)" else ""}")
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -300,7 +438,17 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("构建时间")
-                        Text("2024-01-01")
+                        Text(BuildConfig.BUILD_DATE)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("版本代码")
+                        Text("${packageInfo?.versionCode ?: 6}")
                     }
                 }
             }
@@ -328,7 +476,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "© 2024 SMSforwarder",
+                text = "© 2025 SMSforwarder",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )

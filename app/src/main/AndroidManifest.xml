@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     
+    <!-- Phone State Permission for SIM card information -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    
     <!-- Network Permission -->
     <uses-permission android:name="android.permission.INTERNET" />
     

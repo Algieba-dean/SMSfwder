@@ -21,6 +21,7 @@ object PermissionHelper {
     private const val TAG = "PermissionHelper"
     const val SMS_PERMISSION_REQUEST_CODE = 100
     const val BATTERY_OPTIMIZATION_REQUEST_CODE = 101
+    const val ALL_PERMISSIONS_REQUEST_CODE = 103
     
     // SMS相关权限
     val SMS_PERMISSIONS = arrayOf(
@@ -28,11 +29,31 @@ object PermissionHelper {
         Manifest.permission.READ_SMS
     )
     
+    // 所有必需权限（包括SIM卡读取）
+    val ALL_REQUIRED_PERMISSIONS = arrayOf(
+        Manifest.permission.RECEIVE_SMS,
+        Manifest.permission.READ_SMS,
+        Manifest.permission.READ_PHONE_STATE
+    ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        emptyArray()
+    }
+    
     /**
      * 检查是否有SMS权限
      */
     fun hasSmsPermissions(context: Context): Boolean {
         return SMS_PERMISSIONS.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+    
+    /**
+     * 检查是否有所有必需权限
+     */
+    fun hasAllRequiredPermissions(context: Context): Boolean {
+        return ALL_REQUIRED_PERMISSIONS.all { permission ->
             ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         }
     }
@@ -63,6 +84,19 @@ object PermissionHelper {
     }
     
     /**
+     * 请求所有必需权限
+     */
+    fun requestAllRequiredPermissions(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            ActivityCompat.requestPermissions(
+                activity,
+                ALL_REQUIRED_PERMISSIONS,
+                ALL_PERMISSIONS_REQUEST_CODE
+            )
+        }
+    }
+    
+    /**
      * 检查权限请求结果
      */
     fun onRequestPermissionsResult(
@@ -70,17 +104,38 @@ object PermissionHelper {
         permissions: Array<out String>,
         grantResults: IntArray,
         onGranted: () -> Unit,
-        onDenied: () -> Unit
+        onDenied: () -> Unit,
+        onPartiallyGranted: ((grantedPermissions: List<String>, deniedPermissions: List<String>) -> Unit)? = null
     ) {
-        if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
-            val allGranted = grantResults.isNotEmpty() && grantResults.all { 
-                it == PackageManager.PERMISSION_GRANTED 
-            }
-            
-            if (allGranted) {
-                onGranted()
-            } else {
-                onDenied()
+        when (requestCode) {
+            SMS_PERMISSION_REQUEST_CODE, ALL_PERMISSIONS_REQUEST_CODE -> {
+                val allGranted = grantResults.isNotEmpty() && grantResults.all { 
+                    it == PackageManager.PERMISSION_GRANTED 
+                }
+                
+                if (allGranted) {
+                    onGranted()
+                } else {
+                    // 处理部分授权的情况
+                    if (onPartiallyGranted != null && grantResults.isNotEmpty()) {
+                        val grantedPermissions = mutableListOf<String>()
+                        val deniedPermissions = mutableListOf<String>()
+                        
+                        permissions.forEachIndexed { index, permission ->
+                            if (index < grantResults.size) {
+                                if (grantResults[index] == PackageManager.PERMISSION_GRANTED) {
+                                    grantedPermissions.add(permission)
+                                } else {
+                                    deniedPermissions.add(permission)
+                                }
+                            }
+                        }
+                        
+                        onPartiallyGranted(grantedPermissions, deniedPermissions)
+                    } else {
+                        onDenied()
+                    }
+                }
             }
         }
     }

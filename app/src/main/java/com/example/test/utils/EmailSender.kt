@@ -98,57 +98,54 @@ object EmailSender {
         emailConfig: EmailConfig,
         forwardRecords: List<ForwardRecord>
     ): List<EmailResult> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "📧 Starting batch email send: ${forwardRecords.size} emails")
-        
         val results = mutableListOf<EmailResult>()
-        var successCount = 0
-        var failureCount = 0
         
-        forwardRecords.forEach { record ->
-            val result = sendEmail(emailConfig, record)
-            results.add(result)
+        try {
+            Log.d(TAG, "📧 Starting batch email send for ${forwardRecords.size} records")
             
-            if (result.isSuccess) {
-                successCount++
-            } else {
-                failureCount++
+            // 配置SMTP属性 (复用连接)
+            val properties = createSmtpProperties(emailConfig)
+            val session = createMailSession(properties, emailConfig)
+            
+            forwardRecords.forEach { record ->
+                val startTime = System.currentTimeMillis()
+                try {
+                    val message = createMimeMessage(session, emailConfig, record)
+                    Transport.send(message)
+                    
+                    val processingTime = System.currentTimeMillis() - startTime
+                    results.add(EmailResult(
+                        isSuccess = true,
+                        message = "Email sent successfully",
+                        processingTimeMs = processingTime
+                    ))
+                    
+                    Log.d(TAG, "✅ Batch email ${results.size}/${forwardRecords.size} sent in ${processingTime}ms")
+                    
+                } catch (e: Exception) {
+                    val processingTime = System.currentTimeMillis() - startTime
+                    results.add(EmailResult(
+                        isSuccess = false,
+                        message = "Failed to send email: ${e.message}",
+                        exception = e,
+                        processingTimeMs = processingTime
+                    ))
+                    
+                    Log.e(TAG, "❌ Batch email ${results.size + 1}/${forwardRecords.size} failed in ${processingTime}ms: ${e.message}")
+                }
             }
             
-            // 添加短暂延迟避免SMTP服务器限制
-            if (forwardRecords.size > 1) {
-                kotlinx.coroutines.delay(100)
-            }
+            Log.d(TAG, "📧 Batch email send completed: ${results.count { it.isSuccess }}/${forwardRecords.size} successful")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Batch email send failed: ${e.message}", e)
         }
         
-        Log.d(TAG, "📊 Batch send completed: ✅$successCount ❌$failureCount")
         results
     }
     
     /**
-     * 测试邮件配置
-     * @param emailConfig 邮件配置
-     * @return 测试结果
-     */
-    suspend fun testEmailConfiguration(emailConfig: EmailConfig): EmailResult = withContext(Dispatchers.IO) {
-        Log.d(TAG, "🧪 Testing email configuration")
-        
-        val testRecord = ForwardRecord(
-            id = 0,
-            smsId = 0,
-            emailConfigId = 0,
-            sender = "TEST",
-            content = "Configuration test message",
-            emailSubject = "SMS转发器配置测试",
-            emailBody = "这是一封测试邮件，用于验证SMS转发器的邮件配置是否正确。\\n\\n发送时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}",
-            status = com.example.test.domain.model.ForwardStatus.PENDING,
-            timestamp = System.currentTimeMillis()
-        )
-        
-        sendEmail(emailConfig, testRecord)
-    }
-    
-    /**
-     * 创建SMTP属性配置
+     * 配置SMTP属性
      */
     private fun createSmtpProperties(emailConfig: EmailConfig): Properties {
         return Properties().apply {
@@ -207,6 +204,91 @@ object EmailSender {
             // 设置邮件头
             setHeader("X-Mailer", "SMS Forwarder Android App")
             setHeader("X-Priority", "3") // 普通优先级
+        }
+    }
+    
+    /**
+     * 测试邮件服务器连接
+     * @param emailConfig 邮件配置
+     * @return 连接测试结果
+     */
+    suspend fun testConnection(emailConfig: EmailConfig): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "🔍 Testing email connection to ${emailConfig.smtpHost}:${emailConfig.smtpPort}")
+            
+            val properties = createSmtpProperties(emailConfig)
+            val session = createMailSession(properties, emailConfig)
+            
+            // 获取SMTP传输并测试连接
+            val transport = session.getTransport("smtp")
+            transport.connect(
+                emailConfig.smtpHost,
+                emailConfig.smtpPort,
+                emailConfig.senderEmail,
+                emailConfig.senderPassword
+            )
+            transport.close()
+            
+            Log.d(TAG, "✅ Email connection test successful")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "❌ Email connection test failed: ${e.message}")
+            false
+        }
+    }
+    
+    /**
+     * 发送简单的文本邮件（用于心跳检测）
+     * @param to 收件人邮箱
+     * @param subject 邮件主题  
+     * @param body 邮件内容
+     * @param emailConfig 邮件配置
+     * @return 发送结果
+     */
+    suspend fun sendSimpleEmail(
+        to: String,
+        subject: String,
+        body: String,
+        emailConfig: EmailConfig
+    ): EmailResult = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
+        
+        try {
+            Log.d(TAG, "📧 Sending simple email: $subject")
+            
+            val properties = createSmtpProperties(emailConfig)
+            val session = createMailSession(properties, emailConfig)
+            
+            val message = MimeMessage(session).apply {
+                setFrom(InternetAddress(emailConfig.senderEmail))
+                setRecipients(Message.RecipientType.TO, InternetAddress.parse(to))
+                this.subject = subject
+                setText(body, "utf-8")
+                setHeader("X-Mailer", "SMS Forwarder Android App")
+                setHeader("X-Priority", "3")
+            }
+            
+            Transport.send(message)
+            
+            val processingTime = System.currentTimeMillis() - startTime
+            Log.d(TAG, "✅ Simple email sent successfully in ${processingTime}ms")
+            
+            EmailResult(
+                isSuccess = true,
+                message = "Email sent successfully",
+                processingTimeMs = processingTime
+            )
+            
+        } catch (e: Exception) {
+            val processingTime = System.currentTimeMillis() - startTime
+            Log.e(TAG, "❌ Failed to send simple email in ${processingTime}ms: ${e.message}", e)
+            
+            EmailResult(
+                isSuccess = false,
+                message = "Failed to send email: ${e.message}",
+                exception = e,
+                processingTimeMs = processingTime
+            )
         }
     }
 } 

@@ -19,7 +19,7 @@ import com.example.test.data.database.entity.*
         ForwardRecordEntity::class,
         ForwardStatisticsEntity::class
     ],
-    version = 4,  // 将版本号从3增加到4
+    version = 5,  // 将版本号从4增加到5，添加SIM卡字段支持
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -110,6 +110,15 @@ abstract class SmsForwarderDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE forward_records ADD COLUMN processingDelayMs INTEGER")
                 database.execSQL("ALTER TABLE forward_records ADD COLUMN systemLoad TEXT")
                 database.execSQL("ALTER TABLE forward_records ADD COLUMN vendorOptimizationActive INTEGER")
+            }
+        }
+
+        // Migration from version 4 to version 5
+        // Added SIM card fields to forward_records table
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE forward_records ADD COLUMN simSlot TEXT")
+                database.execSQL("ALTER TABLE forward_records ADD COLUMN simOperator TEXT")
             }
         }
     }

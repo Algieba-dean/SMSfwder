@@ -36,7 +36,8 @@ import javax.inject.Singleton
 class BackgroundReliabilityManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferencesManager: PreferencesManager,
-    private val permissionHelper: PermissionHelper
+    private val permissionHelper: PermissionHelper,
+    private val compatibilityChecker: CompatibilityChecker
 ) {
     
     private val gson = Gson()
@@ -810,5 +811,148 @@ class BackgroundReliabilityManager @Inject constructor(
         cachedDeviceStateTime = 0L
         cachedReliabilityReport = null
         cachedReportTime = 0L
+    }
+    
+    // ================== 设备兼容性检测集成 ==================
+    
+    /**
+     * 获取设备兼容性报告
+     * 使用24小时缓存机制
+     */
+    fun getCompatibilityReport(forceRefresh: Boolean = false): com.example.test.domain.model.CompatibilityReport {
+        Log.d(TAG, "🔍 Getting device compatibility report (forceRefresh: $forceRefresh)")
+        return compatibilityChecker.checkDeviceCompatibility(forceRefresh)
+    }
+    
+    /**
+     * 获取设备兼容性评分 (0-100)
+     */
+    fun getCompatibilityScore(): Int {
+        return compatibilityChecker.getCompatibilityScore()
+    }
+    
+    /**
+     * 获取支持的功能列表
+     */
+    fun getSupportedFeatures(): List<String> {
+        return compatibilityChecker.getSupportedFeatures()
+    }
+    
+    /**
+     * 检查设备是否适合SMS转发
+     * 综合兼容性和可靠性评估
+     */
+    fun isDeviceSuitableForSmsForwarding(): Pair<Boolean, String> {
+        val compatibilityReport = getCompatibilityReport()
+        val reliabilityReport = generateReliabilityReport()
+        
+        Log.d(TAG, "📊 Evaluating device suitability:")
+        Log.d(TAG, "   🔧 Compatibility score: ${compatibilityReport.overallScore}")
+        Log.d(TAG, "   📈 Reliability score: ${reliabilityReport.overallReliabilityScore.toInt()}")
+        
+        return when {
+            // 兼容性评分低于30分，设备不适合
+            compatibilityReport.overallScore < 30 -> {
+                Pair(false, "设备兼容性过低 (${compatibilityReport.overallScore}/100)，不支持SMS转发功能")
+            }
+            
+            // Android版本太低
+            !compatibilityReport.androidVersionSupport.isSupported -> {
+                Pair(false, "Android版本过低，需要Android 5.0及以上版本")
+            }
+            
+            // 缺少基本SMS权限
+            !compatibilityReport.smsSupport.canReceiveSms -> {
+                Pair(false, "缺少SMS接收权限，无法转发短信")
+            }
+            
+            // 兼容性评分30-50分，勉强可用但需要优化
+            compatibilityReport.overallScore < 50 -> {
+                val issues = compatibilityReport.manufacturerOptimization.specificIssues.take(2).joinToString(", ")
+                Pair(true, "设备基本适用但需要优化设置：$issues")
+            }
+            
+            // 兼容性评分50-70分，适用但有限制
+            compatibilityReport.overallScore < 70 -> {
+                val level = compatibilityReport.getCompatibilityLevel()
+                Pair(true, "设备适用于SMS转发，兼容性等级：$level")
+            }
+            
+            // 兼容性评分70分以上，完全适用
+            else -> {
+                val level = compatibilityReport.getCompatibilityLevel()
+                Pair(true, "设备完全适用于SMS转发，兼容性等级：$level")
+            }
+        }
+    }
+    
+    /**
+     * 获取针对当前设备的优化建议
+     */
+    fun getDeviceOptimizationRecommendations(): List<String> {
+        val compatibilityReport = getCompatibilityReport()
+        val reliabilityReport = generateReliabilityReport()
+        
+        val recommendations = mutableListOf<String>()
+        
+        // 添加兼容性建议
+        recommendations.addAll(compatibilityReport.recommendations)
+        
+        // 添加可靠性建议
+        recommendations.addAll(reliabilityReport.recommendations)
+        
+        // 根据厂商添加特定建议
+        if (compatibilityReport.manufacturerOptimization.hasKnownIssues) {
+            recommendations.add("检测到 ${compatibilityReport.manufacturerOptimization.manufacturer} 设备特殊优化")
+            recommendations.addAll(compatibilityReport.manufacturerOptimization.recommendedSettings)
+        }
+        
+        // 去重并限制数量
+        return recommendations.distinct().take(8)
+    }
+    
+    /**
+     * 检查设备是否需要特殊配置
+     * 主要针对激进优化的厂商设备
+     */
+    fun requiresSpecialConfiguration(): Boolean {
+        val compatibilityReport = getCompatibilityReport()
+        return compatibilityReport.manufacturerOptimization.whitelistRequired ||
+                compatibilityReport.manufacturerOptimization.optimizationLevel in listOf(
+                    com.example.test.domain.model.OptimizationLevel.AGGRESSIVE,
+                    com.example.test.domain.model.OptimizationLevel.EXTREME
+                )
+    }
+    
+    /**
+     * 在策略选择中考虑兼容性因素
+     * 内部方法，用于增强策略选择算法
+     */
+    private fun adjustScoreByCompatibility(baseScore: Float, strategy: ExecutionStrategy): Float {
+        val compatibilityReport = getCompatibilityReport()
+        
+        return when (strategy) {
+            ExecutionStrategy.WORK_MANAGER_EXPEDITED, ExecutionStrategy.WORK_MANAGER_NORMAL -> {
+                if (compatibilityReport.backgroundSupport.workManagerSupport) {
+                    baseScore * 1.1f // WorkManager支持良好时加分
+                } else {
+                    baseScore * 0.7f // WorkManager支持不佳时减分
+                }
+            }
+            
+            ExecutionStrategy.FOREGROUND_SERVICE -> {
+                if (compatibilityReport.backgroundSupport.foregroundServiceSupport) {
+                    baseScore * 1.0f // 前台服务支持良好时保持原分
+                } else {
+                    baseScore * 0.8f // 前台服务支持不佳时轻微减分
+                }
+            }
+            
+            ExecutionStrategy.HYBRID_AUTO_SWITCH -> {
+                // 混合策略需要良好的整体兼容性
+                val compatibilityFactor = compatibilityReport.overallScore / 100f
+                baseScore * (0.8f + 0.4f * compatibilityFactor)
+            }
+        }
     }
 } 

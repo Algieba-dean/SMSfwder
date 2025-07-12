@@ -70,12 +70,16 @@ class SmsForwardWorker @AssistedInject constructor(
             val content = inputData.getString("content") ?: ""
             val timestamp = inputData.getLong("timestamp", System.currentTimeMillis())
             val originalTimestamp = inputData.getLong("originalTimestamp", timestamp)
+            val simSlot = inputData.getString("simSlot")?.takeIf { it.isNotEmpty() }
+            val simOperator = inputData.getString("simOperator")?.takeIf { it.isNotEmpty() }
 
             Log.i(TAG, "📥 UNCONDITIONAL SMS FORWARDING:")
             Log.i(TAG, "   📞 Sender: $sender")
             Log.i(TAG, "   📝 Content: ${content.take(50)}${if (content.length > 50) "..." else ""}")
             Log.i(TAG, "   🕐 Timestamp: $timestamp")
             Log.i(TAG, "   🆔 Message ID: $receivedMessageId")
+            Log.i(TAG, "   📱 SIM Slot: ${simSlot ?: "Unknown"}")
+            Log.i(TAG, "   📡 SIM Operator: ${simOperator ?: "Unknown"}")
             Log.i(TAG, "   🎯 FORWARD MODE: NO FILTERING - FORWARD ALL")
 
             if (receivedMessageId == -1L) {
@@ -98,27 +102,85 @@ class SmsForwardWorker @AssistedInject constructor(
             // 🚀 UNCONDITIONAL FORWARDING - NO RULE CHECKS
             Log.i(TAG, "🚀 BYPASSING ALL RULES - DIRECT FORWARD")
             
-            // Create forward record immediately
+            // Get detailed SIM card information for better display
+            val simCardManager = com.example.test.utils.SimCardManager
+            val dualSimStatus = simCardManager.getDualSimStatus(context)
+            
+            // Try to find the specific SIM card for this message
+            var simCardDetail: com.example.test.domain.model.SimCardInfo? = null
+            
+            // First, try to find SIM by phone number if sender is from known SIM
+            if (!sender.isBlank()) {
+                simCardDetail = dualSimStatus.getSimByPhoneNumber(sender)
+            }
+            
+            // If not found, try to use the passed simSlot and simOperator
+            if (simCardDetail == null && simSlot != null) {
+                simCardDetail = when (simSlot) {
+                    "卡1" -> dualSimStatus.getSimBySlot(0)
+                    "卡2" -> dualSimStatus.getSimBySlot(1)
+                    else -> dualSimStatus.activeSimCards.firstOrNull()
+                }
+            }
+            
+            // If still not found, use primary SIM
+            if (simCardDetail == null) {
+                simCardDetail = dualSimStatus.getPrimarySimCard()
+            }
+            
+            // Build detailed SIM information display
+            val simSlotDisplay = simSlot ?: simCardDetail?.getFriendlyName() ?: "未知"
+            val simOperatorDisplay = simOperator ?: simCardDetail?.getCarrierDisplayName() ?: "未知运营商"
+            val simPhoneNumber = simCardDetail?.phoneNumber
+            val simDisplayName = simCardDetail?.displayName?.takeIf { it.isNotBlank() }
+            
+            // Create subject with SIM card info
+            val subjectPrefix = when {
+                simPhoneNumber != null -> "【$simSlotDisplay($simPhoneNumber)】"
+                simSlot != null -> "【$simSlot】"
+                else -> ""
+            }
+            
             val forwardRecord = ForwardRecord(
                 smsId = messageId,
                 emailConfigId = 0L,
                 sender = sender,
                 content = content,
-                emailSubject = "SMS from $sender",
+                emailSubject = "${subjectPrefix}来自 $sender 的短信",
                 emailBody = """
-                    SMS Forwarded Message (NO FILTERING)
+                    📲 短信转发通知
                     
-                    From: $sender
-                    Time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(timestamp))}
+                    📱 接收SIM卡信息：
+                    ├ 卡槽：$simSlotDisplay${if (simDisplayName != null && simDisplayName != simSlotDisplay) " ($simDisplayName)" else ""}
+                    ├ 运营商：$simOperatorDisplay
+                    ${if (simPhoneNumber != null) "├ 卡号：$simPhoneNumber" else "├ 卡号：未获取到"}
+                    ${if (simCardDetail?.subscriptionId != null && simCardDetail.subscriptionId >= 0) "├ 订阅ID：${simCardDetail.subscriptionId}" else ""}
+                    ${if (simCardDetail?.isDefault == true) "├ 状态：默认SIM卡" else "├ 状态：非默认卡"}
                     
-                    Content:
+                    📨 消息详情：
+                    ├ 发送方：$sender
+                    ├ 接收时间：${java.text.SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss", java.util.Locale.CHINA).format(java.util.Date(timestamp))}
+                    ├ 转发时间：${java.text.SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss", java.util.Locale.CHINA).format(java.util.Date(System.currentTimeMillis()))}
+                    ├ 消息长度：${content.length} 字符
+                    
+                    📝 消息内容：
+                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     $content
+                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     
-                    ---
-                    Forwarded by SMS Forwarder (Unconditional Mode)
+                    📊 设备状态：
+                    ├ 系统：Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})
+                    ├ 设备：${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}
+                    ├ 双卡设备：${if (dualSimStatus.isDualSimDevice) "是" else "否"}
+                    ├ 支持卡槽：${dualSimStatus.supportedSlots} 个
+                    └ 激活SIM卡：${dualSimStatus.activeSimCards.size} 张
+                    
+                    🔧 由 SMS转发器 自动转发（全量转发模式）
                 """.trimIndent(),
                 status = ForwardStatus.PENDING,
-                timestamp = timestamp
+                timestamp = timestamp,
+                simSlot = simSlot,
+                simOperator = simOperator
             )
             
             Log.i(TAG, "✅ Direct forward record created - NO RULES APPLIED")

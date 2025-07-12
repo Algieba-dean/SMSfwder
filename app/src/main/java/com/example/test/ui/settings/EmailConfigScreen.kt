@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import com.example.test.domain.model.EmailProvider
+import com.example.test.ui.settings.components.ConfigManagementDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +62,15 @@ fun EmailConfigScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
+            IconButton(
+                onClick = viewModel::toggleConfigManagement,
+                enabled = !uiState.isManaging && !uiState.isTestingConnection && !uiState.isSaving
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "配置管理"
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -222,6 +232,20 @@ fun EmailConfigScreen(
             }
         }
     }
+
+    // 配置管理对话框
+    ConfigManagementDialog(
+        isVisible = uiState.showConfigManagement,
+        allConfigs = uiState.allConfigs,
+        exportedJson = uiState.exportedConfigJson,
+        isManaging = uiState.isManaging,
+        onDismiss = viewModel::toggleConfigManagement,
+        onClearAllConfigs = viewModel::clearAllConfigs,
+        onExportConfigs = viewModel::exportConfigs,
+        onImportConfigs = viewModel::importConfigs,
+        onDeleteConfig = viewModel::deleteConfig,
+        onClearExportedJson = viewModel::clearExportedJson
+    )
 }
 
 @Composable

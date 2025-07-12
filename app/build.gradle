@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.ksp)
     id 'dagger.hilt.android.plugin'
     id 'kotlin-parcelize'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.10'
 }
 
 android {
@@ -15,10 +16,15 @@ android {
         applicationId "com.example.test"
         minSdk 26          // Android 8.0+ (覆盖95%+用户)
         targetSdk 35       // 目标最新版本，获得最新功能
-        versionCode 1
-        versionName "1.0.5"
+        versionCode 6
+        versionName "1.0.6"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 自动生成构建时间
+        buildConfigField "String", "BUILD_TIME", "\"${new Date().format('yyyy-MM-dd HH:mm:ss')}\""
+        buildConfigField "String", "BUILD_DATE", "\"${new Date().format('yyyy-MM-dd')}\""
+        buildConfigField "long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L"
     }
 
     // 签名配置（可选）
@@ -56,6 +62,7 @@ android {
     }
     buildFeatures {
         compose true
+        buildConfig true
     }
     
     packaging {
@@ -111,6 +118,9 @@ dependencies {
     
     // Coroutines
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    
+    // Kotlinx Serialization
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0"
     
     // DataStore
     implementation "androidx.datastore:datastore-preferences:1.0.0"

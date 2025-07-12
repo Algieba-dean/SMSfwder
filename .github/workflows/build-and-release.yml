@@ -75,12 +75,13 @@ jobs:
         tag_name: ${{ github.ref_name }}
         name: SMSforwarder ${{ github.ref_name }}
         body: |
-          ## SMSforwarder ${{ github.ref_name }}
+          ## SMSforwarder ${{ github.ref_name }} - 重大功能更新
           
           ### 📱 Android应用更新
           
           **版本**: ${{ steps.version.outputs.version_name }}
           **构建时间**: ${{ github.event.head_commit.timestamp }}
+          **更新内容**: 双卡支持、兼容性检测、健康监控、高级配置管理
           
           ### 📦 下载
           
@@ -90,10 +91,19 @@ jobs:
           ### ✨ 功能特性
           
           - 🚀 自动SMS转发到邮箱
-          - ⚙️ 智能转发规则配置
+          - ⚙️ 智能转发规则配置  
           - 📊 详细统计信息
           - 📝 完整日志记录
           - 🎨 现代化Material Design界面
+          
+          ### 🆕 v1.0.6 新增功能
+          
+          - 🔄 **双卡设备支持**: 自动识别SIM卡槽和运营商信息
+          - 🔍 **设备兼容性检测**: 智能评分系统 (0-100分)
+          - ❤️ **定期健康检测**: 心跳监控和异常告警
+          - ⚙️ **高级配置管理**: 批量导入/导出、智能验证
+          - 📱 **SIM卡信息展示**: 实时状态和信号强度
+          - 🛡️ **系统深度检测**: 后台能力和权限分析
           
           ### 🔒 安全说明
           
@@ -101,9 +111,10 @@ jobs:
           
           ### 📋 安装要求
           
-          - Android 14+ (API 35+)
-          - SMS权限
-          - 网络权限
+          - Android 8.0+ (API 26+) - 覆盖95%+用户
+          - SMS接收和读取权限
+          - 电话状态权限 (双卡支持)
+          - 网络和通知权限
           
         draft: false
         prerelease: false
