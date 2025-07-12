@@ -11,10 +11,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.test.data.preferences.PreferencesManager
 import com.example.test.domain.model.BackgroundReliabilityReport
 import com.example.test.domain.model.ExecutionStrategy
+import com.example.test.domain.model.ForwardRecord
+import com.example.test.domain.model.ForwardStatus
 import com.example.test.domain.model.PermissionStatus
+import com.example.test.domain.repository.EmailRepository
 import com.example.test.utils.BackgroundReliabilityManager
+import com.example.test.utils.EmailSender
 import com.example.test.utils.PermissionHelper
 import com.example.test.utils.VendorPermissionHelper
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +40,8 @@ class BackgroundOptimizationViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val backgroundReliabilityManager: BackgroundReliabilityManager,
     private val permissionHelper: PermissionHelper,
-    private val vendorPermissionHelper: VendorPermissionHelper
+    private val vendorPermissionHelper: VendorPermissionHelper,
+    private val emailRepository: EmailRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BackgroundOptimizationUiState())
@@ -288,22 +296,76 @@ class BackgroundOptimizationViewModel @Inject constructor(
     fun testBackgroundForwarding() {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "🧪 Testing background forwarding")
+                Log.d(TAG, "🧪 Testing background forwarding - REAL TEST")
                 
                 _uiState.value = _uiState.value.copy(
                     isTesting = true
                 )
                 
-                // 模拟发送测试短信
-                // 这里可以集成实际的测试逻辑
-                kotlinx.coroutines.delay(2000) // 模拟处理时间
+                // 获取邮件配置
+                val emailConfig = emailRepository.getDefaultConfig()
+                if (emailConfig == null) {
+                    Log.e(TAG, "❌ No email configuration found for background forwarding test")
+                    _uiState.value = _uiState.value.copy(
+                        isTesting = false,
+                        errorMessage = "请先配置邮件设置"
+                    )
+                    return@launch
+                }
                 
-                _uiState.value = _uiState.value.copy(
-                    isTesting = false,
-                    lastTestResult = "测试完成，请检查邮箱是否收到测试邮件"
+                Log.d(TAG, "📧 Using email config: ${emailConfig.senderEmail} -> ${emailConfig.receiverEmail}")
+                
+                // 创建测试短信记录
+                val testTimestamp = System.currentTimeMillis()
+                val testForwardRecord = ForwardRecord(
+                    id = 0,
+                    smsId = 0,
+                    emailConfigId = emailConfig.id,
+                    sender = "测试发送方",
+                    content = "这是一条后台转发测试消息，用于验证SMS转发器的后台转发功能是否正常工作。\n\n测试时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(testTimestamp))}",
+                    emailSubject = "SMS转发器 - 后台转发测试",
+                    emailBody = """
+                        |SMS后台转发功能测试
+                        |
+                        |这是一封测试邮件，用于验证SMS转发器的后台转发功能是否正常工作。
+                        |
+                        |测试详情:
+                        |发送方: 测试发送方
+                        |测试时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(testTimestamp))}
+                        |转发策略: ${uiState.value.currentStrategy.getDisplayName()}
+                        |自动策略: ${if (uiState.value.autoStrategyEnabled) "已启用" else "已禁用"}
+                        |
+                        |消息内容:
+                        |这是一条后台转发测试消息，用于验证SMS转发器的后台转发功能是否正常工作。
+                        |
+                        |---
+                        |本邮件由SMS转发器后台转发功能测试生成
+                        |测试ID: BG-TEST-${testTimestamp}
+                    """.trimMargin(),
+                    status = ForwardStatus.PENDING,
+                    timestamp = testTimestamp
                 )
                 
-                Log.d(TAG, "✅ Background forwarding test completed")
+                Log.d(TAG, "📨 Sending test background forwarding email...")
+                
+                // 发送测试邮件
+                val emailResult = EmailSender.sendEmail(emailConfig, testForwardRecord)
+                
+                if (emailResult.isSuccess) {
+                    Log.d(TAG, "✅ Background forwarding test email sent successfully")
+                    _uiState.value = _uiState.value.copy(
+                        isTesting = false,
+                        lastTestResult = "✅ 后台转发测试成功！测试邮件已发送到 ${emailConfig.receiverEmail}，请检查邮箱"
+                    )
+                } else {
+                    Log.e(TAG, "❌ Background forwarding test email failed: ${emailResult.message}")
+                    _uiState.value = _uiState.value.copy(
+                        isTesting = false,
+                        errorMessage = "后台转发测试失败: ${emailResult.message}"
+                    )
+                }
+                
+                Log.d(TAG, "🧪 Background forwarding test completed")
                 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Failed to test background forwarding: ${e.message}", e)

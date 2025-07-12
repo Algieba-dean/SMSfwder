@@ -16,7 +16,7 @@ android {
         minSdk 26          // Android 8.0+ (覆盖95%+用户)
         targetSdk 35       // 目标最新版本，获得最新功能
         versionCode 1
-        versionName "1.0.4"
+        versionName "1.0.5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
