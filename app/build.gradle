@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     id 'dagger.hilt.android.plugin'
     id 'kotlin-parcelize'
@@ -17,7 +16,7 @@ android {
         minSdk 26          // Android 8.0+ (覆盖95%+用户)
         targetSdk 35       // 目标最新版本，获得最新功能
         versionCode 6
-        versionName "1.0.6"
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
@@ -71,6 +70,10 @@ android {
             excludes += 'META-INF/NOTICE.md'
             excludes += 'META-INF/LICENSE.md'
         }
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 }
 

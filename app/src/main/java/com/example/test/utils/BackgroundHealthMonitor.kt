@@ -479,6 +479,7 @@ class BackgroundHealthMonitor @Inject constructor(
                 FAILURE_EMAIL_CONFIG -> recommendations.add("验证邮箱配置")
                 FAILURE_VENDOR_RESTRICTION -> recommendations.add("调整厂商后台限制")
                 FAILURE_DOZE_MODE -> recommendations.add("优化休眠模式设置")
+                else -> recommendations.add("检查系统配置和权限设置")
             }
         }
         
